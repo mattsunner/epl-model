@@ -1,7 +1,7 @@
 # Design: Premier League Season Forecast
 
 **Owner**: Matthew Sunner
-**Last updated**: 14 September 2026
+**Last updated**: 16 September 2026
 **Target**: first end-to-end forecast published before gameweek 19 (late December 2026)
 
 ---
@@ -673,7 +673,9 @@ Closed 14 September 2026. Each has a corresponding ADR.
 
 ## 15. Remaining open questions
 
-1. Does `latest.json` point at the most recent gameweek or get overwritten in place? Overwriting is simpler for the site; a symlink-style pointer file preserves an unambiguous history. Decide before the first publish.
-2. What is the recency-weighting half-life on the promoted-club prior mean? Needs a backtest across promoted cohorts, and the 2025/26 cohort is the most informative single test case.
-3. Does the published page show the model's record against Pinnacle closing on the front page or only in `docs/evaluation.md`? Front page is more honest and less flattering.
-4. Is `fixtures-latest.json` published from the first forecast or held back until the evaluation harness exists? Publishing predictions with no scoring attached invites the wrong kind of attention.
+Questions 1, 3 and 4 were closed on 16 September 2026 (ADR 0004 and ADR 0005).
+
+1. ~~Does `latest.json` point at the most recent gameweek or get overwritten in place?~~ **Both**: every run writes `forecast-gwNN.json` (git history is the record) and overwrites `forecast-latest.json` in place (the site's fixed URL). ADR 0004.
+2. What is the recency-weighting half-life on the promoted-club prior mean? Needs a backtest across promoted cohorts, and the 2025/26 cohort is the most informative single test case. Depends on the season-level evaluation harness (stories C-07, C-08).
+3. ~~Does the published page show the model's record against Pinnacle closing on the front page or only in `docs/evaluation.md`?~~ **Front page.** ADR 0005.
+4. ~~Is `fixtures-latest.json` published from the first forecast or held back until the evaluation harness exists?~~ **Published from the first forecast**; the harness exists. ADR 0005.

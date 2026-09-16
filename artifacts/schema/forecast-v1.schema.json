@@ -1,0 +1,292 @@
+{
+  "$defs": {
+    "Benchmark": {
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "title": "Source",
+          "type": "string"
+        },
+        "note": {
+          "title": "Note",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "note"
+      ],
+      "title": "Benchmark",
+      "type": "object"
+    },
+    "ClubCurrent": {
+      "additionalProperties": false,
+      "properties": {
+        "played": {
+          "minimum": 0,
+          "title": "Played",
+          "type": "integer"
+        },
+        "points": {
+          "minimum": 0,
+          "title": "Points",
+          "type": "integer"
+        },
+        "gd": {
+          "title": "Gd",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "played",
+        "points",
+        "gd"
+      ],
+      "title": "ClubCurrent",
+      "type": "object"
+    },
+    "ClubForecast": {
+      "additionalProperties": false,
+      "properties": {
+        "club_id": {
+          "title": "Club Id",
+          "type": "string"
+        },
+        "display_name": {
+          "title": "Display Name",
+          "type": "string"
+        },
+        "current": {
+          "$ref": "#/$defs/ClubCurrent"
+        },
+        "projected": {
+          "$ref": "#/$defs/ClubProjection"
+        }
+      },
+      "required": [
+        "club_id",
+        "display_name",
+        "current",
+        "projected"
+      ],
+      "title": "ClubForecast",
+      "type": "object"
+    },
+    "ClubProjection": {
+      "additionalProperties": false,
+      "properties": {
+        "points": {
+          "$ref": "#/$defs/Quantiles"
+        },
+        "position": {
+          "$ref": "#/$defs/Quantiles"
+        },
+        "position_pmf": {
+          "items": {
+            "type": "number"
+          },
+          "title": "Position Pmf",
+          "type": "array"
+        },
+        "title": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Title",
+          "type": "number"
+        },
+        "top_four": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Top Four",
+          "type": "number"
+        },
+        "relegation": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Relegation",
+          "type": "number"
+        }
+      },
+      "required": [
+        "points",
+        "position",
+        "position_pmf",
+        "title",
+        "top_four",
+        "relegation"
+      ],
+      "title": "ClubProjection",
+      "type": "object"
+    },
+    "Provenance": {
+      "additionalProperties": false,
+      "properties": {
+        "git_sha": {
+          "title": "Git Sha",
+          "type": "string"
+        },
+        "git_dirty": {
+          "title": "Git Dirty",
+          "type": "boolean"
+        },
+        "model": {
+          "title": "Model",
+          "type": "string"
+        },
+        "model_config_hash": {
+          "title": "Model Config Hash",
+          "type": "string"
+        },
+        "simulations": {
+          "minimum": 1,
+          "title": "Simulations",
+          "type": "integer"
+        },
+        "random_seed": {
+          "title": "Random Seed",
+          "type": "integer"
+        },
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/SourceProvenance"
+          },
+          "title": "Sources",
+          "type": "array"
+        },
+        "package_versions": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Package Versions",
+          "type": "object"
+        }
+      },
+      "required": [
+        "git_sha",
+        "git_dirty",
+        "model",
+        "model_config_hash",
+        "simulations",
+        "random_seed",
+        "sources",
+        "package_versions"
+      ],
+      "title": "Provenance",
+      "type": "object"
+    },
+    "Quantiles": {
+      "additionalProperties": false,
+      "properties": {
+        "mean": {
+          "title": "Mean",
+          "type": "number"
+        },
+        "p10": {
+          "title": "P10",
+          "type": "number"
+        },
+        "p50": {
+          "title": "P50",
+          "type": "number"
+        },
+        "p90": {
+          "title": "P90",
+          "type": "number"
+        }
+      },
+      "required": [
+        "mean",
+        "p10",
+        "p50",
+        "p90"
+      ],
+      "title": "Quantiles",
+      "type": "object"
+    },
+    "SourceProvenance": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "fetched_at": {
+          "format": "date-time",
+          "title": "Fetched At",
+          "type": "string"
+        },
+        "rows": {
+          "minimum": 0,
+          "title": "Rows",
+          "type": "integer"
+        },
+        "content_hash": {
+          "title": "Content Hash",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "fetched_at",
+        "rows",
+        "content_hash"
+      ],
+      "title": "SourceProvenance",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "season": {
+      "pattern": "^\\d{4}-\\d{2}$",
+      "title": "Season",
+      "type": "string"
+    },
+    "as_of_gameweek": {
+      "minimum": 0,
+      "title": "As Of Gameweek",
+      "type": "integer"
+    },
+    "generated_at": {
+      "format": "date-time",
+      "title": "Generated At",
+      "type": "string"
+    },
+    "provenance": {
+      "$ref": "#/$defs/Provenance"
+    },
+    "clubs": {
+      "items": {
+        "$ref": "#/$defs/ClubForecast"
+      },
+      "title": "Clubs",
+      "type": "array"
+    },
+    "benchmark": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Benchmark"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    }
+  },
+  "required": [
+    "season",
+    "as_of_gameweek",
+    "generated_at",
+    "provenance",
+    "clubs"
+  ],
+  "title": "ForecastDocument",
+  "type": "object"
+}

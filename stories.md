@@ -1,6 +1,6 @@
 # Review stories: pl-forecast
 
-Review date: 16 September 2026. Reviewed against the working tree (no commits exist yet),
+Review date: 16 September 2026. Status lines under a story record what has since been done. Reviewed against the working tree (no commits exist yet),
 the live `data/pl.duckdb`, and the raw snapshots under `data/raw/`. Every "verified" claim
 below was checked by running the code or querying the database during the review, not
 inferred from documentation.
@@ -54,6 +54,8 @@ engineering execution.
 
 ### A-01 · P0 · Correction · Put the repository under version control
 
+**Status**: Done 16 Sep 2026: initial commit on `main`.
+
 **As** the maintainer, **I want** an initial commit on `main` with a remote, **so that** the
 "tamper-evident public record" the design depends on (design.md section 9.1) can exist at
 all, and so that the git SHA the artifact provenance block requires has a value.
@@ -68,6 +70,8 @@ Acceptance criteria:
 - Remote configured; CI (A-09) runs on the first push.
 
 ### A-02 · P0 · Correction · The README quickstart fails on a clean clone
+
+**Status**: Done 16 Sep 2026: raw views recreated on connect; `just bootstrap`.
 
 **As** a new contributor, **I want** the documented command order to work from an empty
 `data/` directory, **so that** the "under 15 minutes from clean clone" success criterion
@@ -87,6 +91,8 @@ Acceptance criteria:
 - A test creates a temp `data_dir`, runs migrate with no snapshots, and asserts no error.
 
 ### A-03 · P0 · Correction · `just check` fails today and pre-commit is not enforcing anything
+
+**Status**: Done 16 Sep 2026: local hooks, design.md formatted, hooks installed.
 
 **As** the maintainer, **I want** one toolchain that lint, pre-commit, and CI all share,
 **so that** "enforced at pre-commit rather than by discipline" (design.md section 4.2) is
@@ -186,6 +192,8 @@ Acceptance criteria:
 
 ### A-10 · P1 · Correction · Phase 3 (end-to-end crude forecast) was skipped despite being "deliberate"
 
+**Status**: Done 16 Sep 2026: `plforecast forecast`, `artifacts/` module and schemas, first artifact committed.
+
 **As** the project owner, **I want** a `forecast` command that produces the artifact from
 design.md section 9, **so that** the plumbing is proven before the model improves further.
 
@@ -253,6 +261,8 @@ Acceptance criteria: a `get_settings()` accessor (cached) and explicit injection
 
 ### A-15 · P2 · Recommendation · Catching bare `ValueError` in the backtest is too broad
 
+**Status**: Done 16 Sep 2026: `UnknownClubError`.
+
 Evidence: `evaluate/backtest.py:99` treats any `ValueError` from `scoreline_matrix` as
 "unknown club" and skips the match. A genuinely broken matrix (negative cell, NaN) would be
 silently skipped and counted as an unrateable club. Tests match on the substring
@@ -292,6 +302,8 @@ the directory name; a test for the collision.
 
 ### A-19 · P3 · Recommendation · Notebook hygiene
 
+**Status**: Done 16 Sep 2026: empty notebook removed; conventions doc still pending.
+
 Evidence: `eda.ipynb` at the repo root has zero cells. design.md section 4 requires
 `notebooks/NN-MM-question.ipynb`, an opening cell with question and conclusion, and
 deletion after a week without a conclusion. There is no `notebooks/README.md`.
@@ -312,6 +324,8 @@ and standings computation into a small `standings` module both layers import.
 
 ### A-21 · P2 · Recommendation · The DuckDB file is not portable
 
+**Status**: Done 16 Sep 2026 (with A-02).
+
 Evidence: `storage/db.py:43` substitutes the absolute resolved `raw_dir` into the view SQL
 and records the migration as applied. Moving the repository, or changing
 `PLFORECAST_DATA_DIR`, leaves views pointing at the old path with no re-migration.
@@ -329,6 +343,8 @@ processed.
 ## B.1 Ingestion and refresh
 
 ### B-01 · P0 · Correction · The second FPL ingest breaks curate
+
+**Status**: Done 16 Sep 2026: latest-snapshot selection in curate, two-snapshot test.
 
 **As** the operator running weekly refreshes, **I want** curate to succeed after any
 number of FPL ingests, **so that** the "refreshed after each gameweek" promise holds.
@@ -348,6 +364,8 @@ Acceptance criteria:
 - A test seeds two FPL snapshots and asserts one row per `fixture_id`, from the later one.
 
 ### B-02 · P0 · Correction · The market benchmark cannot be computed for the live season
+
+**Status**: Done 16 Sep 2026: five closing sets landed, `stg_odds`, fallback chain, ADR 0007.
 
 **As** the evaluator, **I want** a closing price for every match including the current
 season, **so that** "evaluated against the market" is possible for the published forecast.
@@ -615,6 +633,8 @@ Modelling and statistics, product and publishing, and project management.
 
 ### C-01 · P0 · Correction · The evaluation coverage accounting does not reconcile
 
+**Status**: Done 16 Sep 2026: `BacktestResult` accounting; evaluation.md regenerated.
+
 **As** a reader of `docs/evaluation.md`, **I want** the numbers to add up, **so that** the
 document is credible.
 
@@ -635,6 +655,8 @@ Acceptance criteria:
 - evaluation.md reports both, with the correct explanation.
 
 ### C-02 · P0 · Correction · Models and the market are not scored on identical rows
+
+**Status**: Done 16 Sep 2026: primary metrics on the intersection (4,066 rows).
 
 Evidence: model rows are 4,066 (including 170 late-2025/26 matches with no odds). Market
 rows are 4,010 (including the roughly 100 warm-up matches and the 14 debut matches the
@@ -663,6 +685,8 @@ Acceptance criteria:
 
 ### C-04 · P1 · Correction · The calibration claim is overstated and the pooled curve hides per-outcome error
 
+**Status**: Done 16 Sep 2026: prose computed from data; per-outcome curves added.
+
 Evidence: evaluation.md says mean predicted probability falls inside the empirical
 confidence interval "in every one of the 10 buckets". Bucket 0.0-0.1: mean predicted
 0.068, interval [0.070, 0.120]. It is outside, and the direction matters: outcomes the
@@ -676,6 +700,8 @@ draw curve is off, that becomes a modelling story.
 
 ### C-05 · P1 · Correction · Uncontested ties in the simulator are broken alphabetically
 
+**Status**: Done 16 Sep 2026: uncontested ties ordered by rng; symmetry test.
+
 Evidence: `engine.py:65` sorts `club_ids` alphabetically; `_resolve_ties` builds standings
 in that order; `PremierLeagueTiebreaks.rank` (`tiebreak.py:74`) uses a stable sort and
 applies head-to-head only to contested positions. For an exact points, goal difference, and
@@ -688,6 +714,8 @@ split evenly across the tied positions); a test with two statistically identical
 asserts symmetric position distributions.
 
 ### C-06 · P2 · Recommendation · Evaluation outputs are hand-transcribed into docs
+
+**Status**: Done 16 Sep 2026: `evaluate` writes metrics.json; `render-evaluation` renders the doc.
 
 Evidence: `evaluate` prints a table; evaluation.md's calibration table came from "the
 equivalent ad hoc script" that is not in the repo. The doc says it is a snapshot that should
@@ -741,6 +769,8 @@ the target line, so progress is legible in the doc.
 ## C.2 Publishing and product
 
 ### C-11 · P1 · Recommendation · Resolve the open questions and start the publishing path
+
+**Status**: Done 16 Sep 2026: ADRs 0004 and 0005; design.md section 15 updated. Site workflow not yet written.
 
 Evidence: design.md section 15 leaves four questions open; section 10 has no
 implementation; 14 weeks remain to the gameweek 19 target. Recommendations, to be recorded

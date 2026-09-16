@@ -4,20 +4,21 @@ Calibrated probability distributions over final Premier League table positions,
 refreshed after each gameweek and evaluated against the market. See `design.md` for
 the full architecture and rationale.
 
-**Status**: early. Ingest (football-data.co.uk, FPL, Understat), club identity
-resolution, curation into `stg_matches`/`mart_fixtures`, the first two rungs of the
-model ladder (`models/poisson.py`, `models/dixon_coles.py`), the season simulation
-engine (`simulate/`), the evaluation harness (`evaluate/`), and a promoted-club prior
-(`features/priors.py`) are built and validated end to end against real data.
-Publishing doesn't exist yet -- there is no forecast to link to.
+**Status**: early, but end to end. Ingest (football-data.co.uk, FPL, Understat), club
+identity resolution, curation into `stg_matches`/`stg_odds`/`mart_fixtures`, the first
+two rungs of the model ladder (`models/poisson.py`, `models/dixon_coles.py`), the season
+simulation engine (`simulate/`), the evaluation harness (`evaluate/`), a promoted-club
+prior (`features/priors.py`) and the forecast artifact (`artifacts/`) are built and run
+against real data. The current forecast is `artifacts/2026-27/forecast-latest.json`,
+produced by `just forecast`; it is not yet published to a page (ADR 0005 describes how it
+will be).
 
-Known gap: newly promoted clubs with no top-flight history in the backfill window
-(Coventry, currently) can't be rated by either model directly. `features/priors.py`
-gives such a club a real, wide-variance prior built from the empirical record of
-similar clubs, but wiring that prior into the model layer itself is future work --
-today it's constructed and validated standalone, not yet consumed by `PoissonModel` or
-`DixonColesModel` (which don't yet have a mechanism to accept a prior; only the
-not-yet-built hierarchical model, per design.md section 6.4, is meant to).
+Known gap, visible in the current forecast: a newly promoted club with almost no
+top-flight history in the backfill window (Coventry, currently) is rated from a handful
+of matches, so its projection is the model's failure mode rather than a prediction to
+trust. `features/priors.py` builds a wide-variance prior for exactly this case, but the
+two shipped models cannot consume it yet; wiring it in as weighted pseudo-observations is
+story C-08 in `stories.md`.
 
 ## Quickstart
 

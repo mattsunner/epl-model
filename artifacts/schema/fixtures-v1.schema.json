@@ -1,0 +1,279 @@
+{
+  "$defs": {
+    "ExpectedGoals": {
+      "additionalProperties": false,
+      "properties": {
+        "home": {
+          "minimum": 0,
+          "title": "Home",
+          "type": "number"
+        },
+        "away": {
+          "minimum": 0,
+          "title": "Away",
+          "type": "number"
+        }
+      },
+      "required": [
+        "home",
+        "away"
+      ],
+      "title": "ExpectedGoals",
+      "type": "object"
+    },
+    "FixtureForecast": {
+      "additionalProperties": false,
+      "properties": {
+        "fixture_id": {
+          "title": "Fixture Id",
+          "type": "string"
+        },
+        "gameweek": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Gameweek"
+        },
+        "kickoff": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Kickoff"
+        },
+        "home": {
+          "title": "Home",
+          "type": "string"
+        },
+        "away": {
+          "title": "Away",
+          "type": "string"
+        },
+        "outcome": {
+          "$ref": "#/$defs/Outcome"
+        },
+        "expected_goals": {
+          "$ref": "#/$defs/ExpectedGoals"
+        },
+        "top_scorelines": {
+          "items": {
+            "$ref": "#/$defs/Scoreline"
+          },
+          "title": "Top Scorelines",
+          "type": "array"
+        }
+      },
+      "required": [
+        "fixture_id",
+        "kickoff",
+        "home",
+        "away",
+        "outcome",
+        "expected_goals",
+        "top_scorelines"
+      ],
+      "title": "FixtureForecast",
+      "type": "object"
+    },
+    "Outcome": {
+      "additionalProperties": false,
+      "properties": {
+        "home": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Home",
+          "type": "number"
+        },
+        "draw": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Draw",
+          "type": "number"
+        },
+        "away": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Away",
+          "type": "number"
+        }
+      },
+      "required": [
+        "home",
+        "draw",
+        "away"
+      ],
+      "title": "Outcome",
+      "type": "object"
+    },
+    "Provenance": {
+      "additionalProperties": false,
+      "properties": {
+        "git_sha": {
+          "title": "Git Sha",
+          "type": "string"
+        },
+        "git_dirty": {
+          "title": "Git Dirty",
+          "type": "boolean"
+        },
+        "model": {
+          "title": "Model",
+          "type": "string"
+        },
+        "model_config_hash": {
+          "title": "Model Config Hash",
+          "type": "string"
+        },
+        "simulations": {
+          "minimum": 1,
+          "title": "Simulations",
+          "type": "integer"
+        },
+        "random_seed": {
+          "title": "Random Seed",
+          "type": "integer"
+        },
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/SourceProvenance"
+          },
+          "title": "Sources",
+          "type": "array"
+        },
+        "package_versions": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Package Versions",
+          "type": "object"
+        }
+      },
+      "required": [
+        "git_sha",
+        "git_dirty",
+        "model",
+        "model_config_hash",
+        "simulations",
+        "random_seed",
+        "sources",
+        "package_versions"
+      ],
+      "title": "Provenance",
+      "type": "object"
+    },
+    "Scoreline": {
+      "additionalProperties": false,
+      "properties": {
+        "home": {
+          "minimum": 0,
+          "title": "Home",
+          "type": "integer"
+        },
+        "away": {
+          "minimum": 0,
+          "title": "Away",
+          "type": "integer"
+        },
+        "p": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "P",
+          "type": "number"
+        }
+      },
+      "required": [
+        "home",
+        "away",
+        "p"
+      ],
+      "title": "Scoreline",
+      "type": "object"
+    },
+    "SourceProvenance": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "fetched_at": {
+          "format": "date-time",
+          "title": "Fetched At",
+          "type": "string"
+        },
+        "rows": {
+          "minimum": 0,
+          "title": "Rows",
+          "type": "integer"
+        },
+        "content_hash": {
+          "title": "Content Hash",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "fetched_at",
+        "rows",
+        "content_hash"
+      ],
+      "title": "SourceProvenance",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "season": {
+      "pattern": "^\\d{4}-\\d{2}$",
+      "title": "Season",
+      "type": "string"
+    },
+    "as_of_gameweek": {
+      "minimum": 0,
+      "title": "As Of Gameweek",
+      "type": "integer"
+    },
+    "generated_at": {
+      "format": "date-time",
+      "title": "Generated At",
+      "type": "string"
+    },
+    "provenance": {
+      "$ref": "#/$defs/Provenance"
+    },
+    "fixtures": {
+      "items": {
+        "$ref": "#/$defs/FixtureForecast"
+      },
+      "title": "Fixtures",
+      "type": "array"
+    }
+  },
+  "required": [
+    "season",
+    "as_of_gameweek",
+    "generated_at",
+    "provenance",
+    "fixtures"
+  ],
+  "title": "FixturesDocument",
+  "type": "object"
+}

@@ -37,3 +37,6 @@ evaluate:
 
 render-evaluation:
     uv run plforecast render-evaluation
+
+forecast:
+    uv run plforecast forecast

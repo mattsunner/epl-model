@@ -1,0 +1,26 @@
+name: artifact-validate
+
+# The one place CI touches the committed forecasts (design.md 9.4): every document
+# under artifacts/ must validate against its declared schema on every push that
+# changes one.
+
+on:
+  push:
+    paths:
+      - "artifacts/**"
+      - "src/plforecast/artifacts/**"
+  pull_request:
+    paths:
+      - "artifacts/**"
+      - "src/plforecast/artifacts/**"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+      - run: uv run plforecast validate-artifacts

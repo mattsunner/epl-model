@@ -7,7 +7,7 @@ import polars as pl
 import pytest
 
 from plforecast.ingest.base import RawPart, RawPayload
-from plforecast.ingest.understat import UnderstatSource
+from plforecast.ingest.understat import UnderstatSource, season_batches
 
 
 def _payload(rows: list[dict]) -> RawPayload:
@@ -90,3 +90,9 @@ def test_parse_handles_multiple_matches_and_seasons():
     )
 
     assert df["season"].to_list() == ["2015/16", "2016/17"]
+
+
+def test_season_batches_keep_completed_cached_and_current_live():
+    assert season_batches([2015, 2016, 2026], 2026) == [([2015, 2016], False), ([2026], True)]
+    assert season_batches([2026], 2026) == [([2026], True)]
+    assert season_batches([2015], 2026) == [([2015], False)]

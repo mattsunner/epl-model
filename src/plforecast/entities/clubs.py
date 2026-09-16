@@ -26,7 +26,7 @@ SourceName = Literal["football_data", "fpl", "clubelo", "understat", "transferma
 
 _ALIAS_COLUMNS: dict[SourceName, str] = {
     "football_data": "football_data_name",
-    "fpl": "fpl_team_id",
+    "fpl": "fpl_code",
     "clubelo": "clubelo_name",
     "understat": "understat_name",
     "transfermarkt": "transfermarkt_id",

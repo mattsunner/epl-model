@@ -15,11 +15,11 @@ Team names are Understat's own spelling (e.g. "Newcastle United" vs football-dat
 still unpopulated; that is the next piece of work this adapter unblocks, not something
 it does itself.
 
-Caching: soccerdata has no TTL concept of its own, only an on/off cache. A full
-backfill (`since=None`) uses it normally -- completed seasons are immutable, so reusing
-a prior scrape is free and correct. An incremental refresh (`since` set to the current
-season) forces `no_cache=True`, since the whole point of asking for an incremental
-refresh is that the current season's matches have changed since last time.
+Caching: soccerdata has no TTL concept of its own, only an on/off cache. Completed
+seasons are immutable, so their scrape is reused from the cache. The current season is
+always fetched live (`no_cache=True`), whether the run is a full backfill or an
+incremental refresh (`since` set): a cached copy of an in-progress season is stale by
+definition, and reusing it would land last week's 40 matches every week (story B-08).
 
 Season input format: seasons are passed to soccerdata as `season_code()` pair-code
 strings (e.g. "2122"), never bare integers. Confirmed by hand against the live site: a
@@ -67,6 +67,19 @@ class TeamMatchXGSchema(pa.DataFrameModel):
         coerce = True
 
 
+def season_batches(start_years: list[int], current_start_year: int) -> list[tuple[list[int], bool]]:
+    """Split requested seasons into (years, no_cache) batches: completed seasons from
+    the cache, the current season always live."""
+    completed = [y for y in start_years if y < current_start_year]
+    current = [y for y in start_years if y >= current_start_year]
+    batches: list[tuple[list[int], bool]] = []
+    if completed:
+        batches.append((completed, False))
+    if current:
+        batches.append((current, True))
+    return batches
+
+
 class UnderstatSource:
     name = "understat"
 
@@ -77,24 +90,29 @@ class UnderstatSource:
         current_start_year = self.config.current_season_start_year()
         if since is None:
             start_years = list(range(self.config.backfill_start_season, current_start_year + 1))
-            no_cache = False
         else:
             start_years = [current_start_year]
-            no_cache = True
 
-        season_codes = [season_code(year) for year in start_years]
-        scraper = sd.Understat(
-            leagues=self.config.understat_league,
-            seasons=season_codes,
-            data_dir=self.config.cache_dir / "understat-soccerdata",
-            no_cache=no_cache,
-        )
-        # soccerdata prints a `Season id "2021" is ambiguous` UserWarning whenever the
-        # 2020/21 season ("2021" as a pair-code) is in the requested range. Harmless
-        # noise, already confirmed correct above for our pair-code-string input -- not
-        # suppressed here because soccerdata fetches seasons from a worker thread, so a
-        # filter registered in this thread does not reliably reach it.
-        raw = scraper.read_team_match_stats().reset_index()
+        frames = []
+        for years, no_cache in season_batches(start_years, current_start_year):
+            scraper = sd.Understat(
+                leagues=self.config.understat_league,
+                seasons=[season_code(year) for year in years],
+                data_dir=self.config.cache_dir / "understat-soccerdata",
+                no_cache=no_cache,
+            )
+            # soccerdata prints a `Season id "2021" is ambiguous` UserWarning whenever the
+            # 2020/21 season ("2021" as a pair-code) is in the requested range. Harmless
+            # noise, already confirmed correct above for our pair-code-string input -- not
+            # suppressed here because soccerdata fetches seasons from a worker thread, so a
+            # filter registered in this thread does not reliably reach it.
+            frames.append(scraper.read_team_match_stats().reset_index())
+            log.info(
+                "understat.fetched",
+                seasons=[season_label(y) for y in years],
+                no_cache=no_cache,
+            )
+        raw = pd.concat(frames, ignore_index=True)
 
         buffer = io.BytesIO()
         raw.to_parquet(buffer)

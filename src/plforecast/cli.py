@@ -302,5 +302,32 @@ def forecast(
     typer.echo(f"written: {', '.join(str(path) for path in written)}")
 
 
+@app.command()
+def validate_artifacts(
+    artifacts_dir: Annotated[Path, typer.Option(help="Directory of committed forecasts.")] = Path(
+        "artifacts"
+    ),
+) -> None:
+    """Validate every committed forecast and fixtures document against its schema
+    (design.md 9.4). Exit code 1 on the first invalid file."""
+    from pydantic import ValidationError
+
+    from plforecast.artifacts.schema import FixturesDocument, ForecastDocument
+
+    checked = 0
+    season_dirs = sorted(
+        p for p in artifacts_dir.glob("[0-9][0-9][0-9][0-9]-[0-9][0-9]") if p.is_dir()
+    )
+    for path in sorted(path for d in season_dirs for path in d.glob("*.json")):
+        model = ForecastDocument if path.name.startswith("forecast-") else FixturesDocument
+        try:
+            model.model_validate_json(path.read_text())
+        except ValidationError as exc:
+            typer.echo(f"INVALID {path}: {exc}", err=True)
+            raise typer.Exit(code=1) from None
+        checked += 1
+    typer.echo(f"validated {checked} artifact document(s) under {artifacts_dir}")
+
+
 if __name__ == "__main__":
     app()

@@ -1,7 +1,19 @@
 {
   "teams": [
-    {"id": 1, "name": "Arsenal", "short_name": "ARS", "strength": 4},
-    {"id": 7, "name": "Bournemouth", "short_name": "BOU", "strength": 3}
+    {
+      "id": 1,
+      "name": "Arsenal",
+      "short_name": "ARS",
+      "strength": 4,
+      "code": 3
+    },
+    {
+      "id": 7,
+      "name": "Bournemouth",
+      "short_name": "BOU",
+      "strength": 3,
+      "code": 9
+    }
   ],
   "elements": [
     {

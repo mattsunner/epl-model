@@ -265,9 +265,25 @@ def curate_fixtures(
         "SELECT fpl_fixture_id, gameweek, kickoff_time, home_team_id, away_team_id, "
         f"home_score, away_score, finished FROM ({latest_snapshot_sql('raw_fpl_fixtures')})"
     ).pl()
+    # Fixtures reference teams by FPL's per-season `id`; the club dimension keys on the
+    # stable `code`, so map through this snapshot's roster first.
+    roster = conn.execute(
+        f"SELECT fpl_team_id, fpl_code FROM ({latest_snapshot_sql('raw_fpl_teams')})"
+    ).pl()
+    id_to_code = dict(
+        zip(roster["fpl_team_id"].to_list(), roster["fpl_code"].to_list(), strict=True)
+    )
+    referenced = set(fixtures["home_team_id"].to_list()) | set(fixtures["away_team_id"].to_list())
+    unknown_ids = sorted(referenced - set(id_to_code))
+    if unknown_ids:
+        raise ValueError(f"FPL fixtures reference team ids missing from the roster: {unknown_ids}")
 
-    home_club_ids = dimension.resolve(fixtures["home_team_id"].to_list(), "fpl")
-    away_club_ids = dimension.resolve(fixtures["away_team_id"].to_list(), "fpl")
+    home_club_ids = dimension.resolve(
+        [id_to_code[i] for i in fixtures["home_team_id"].to_list()], "fpl"
+    )
+    away_club_ids = dimension.resolve(
+        [id_to_code[i] for i in fixtures["away_team_id"].to_list()], "fpl"
+    )
     season = season_label(settings.current_season_start_year())
 
     curated = fixtures.with_columns(
@@ -293,8 +309,55 @@ def curate_fixtures(
     log.info("curate.fixtures", rows=validated.height)
 
 
+def reconcile_current_season(conn: duckdb.DuckDBPyConnection) -> dict[str, int]:
+    """Cross-source check (story B-07): for the season mart_fixtures covers, every
+    finished FPL fixture that football-data.co.uk has also published must carry the
+    same scoreline. A disagreement raises; count gaps in either direction are returned
+    and logged, since football-data lags FPL by up to a week."""
+    joined = conn.execute(
+        """
+        SELECT f.fixture_id, f.home_club_id, f.away_club_id,
+               f.home_goals AS fpl_home, f.away_goals AS fpl_away,
+               m.home_goals AS fd_home, m.away_goals AS fd_away
+        FROM mart_fixtures f
+        LEFT JOIN stg_matches m
+          ON m.season = f.season
+         AND m.home_club_id = f.home_club_id
+         AND m.away_club_id = f.away_club_id
+        WHERE f.finished
+        """
+    ).pl()
+    disagree = joined.filter(
+        pl.col("fd_home").is_not_null()
+        & ((pl.col("fpl_home") != pl.col("fd_home")) | (pl.col("fpl_away") != pl.col("fd_away")))
+    )
+    if disagree.height:
+        raise ValueError(f"FPL and football-data disagree on scorelines: {disagree}")
+
+    fpl_only = int(joined["fd_home"].null_count())
+    fd_only = conn.execute(
+        """
+        SELECT count(*) FROM stg_matches m
+        WHERE m.season = (SELECT min(season) FROM mart_fixtures)
+          AND NOT EXISTS (
+            SELECT 1 FROM mart_fixtures f
+            WHERE f.finished AND f.home_club_id = m.home_club_id
+              AND f.away_club_id = m.away_club_id
+          )
+        """
+    ).fetchone()
+    counts = {
+        "finished_in_both": int(joined.height - fpl_only),
+        "fpl_only": fpl_only,
+        "football_data_only": int(fd_only[0]) if fd_only else 0,
+    }
+    log.info("curate.reconcile_current_season", **counts)
+    return counts
+
+
 def curate_all(conn: duckdb.DuckDBPyConnection) -> None:
     dimension = load_club_dimension()
     curate_club_season_membership(conn)
     curate_matches(conn, dimension)
     curate_fixtures(conn, dimension)
+    reconcile_current_season(conn)

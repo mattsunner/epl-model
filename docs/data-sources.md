@@ -51,11 +51,12 @@ ingestion contract every adapter implements.
     of the two is a live request.
   - `https://fantasy.premierleague.com/api/fixtures/` -- the full season's fixture list
     in one response, played and unplayed.
-- **Team roster**: not one of the design's stated FPL responsibilities, but it is the
-  source of the `fpl_team_id` column the club dimension needs (design.md section 5.3),
-  and it is free to land alongside the players endpoint. Fixtures and player rows keep
-  FPL's raw numeric team IDs; resolving them to canonical club IDs is the entities
-  layer's job, not ingest's.
+- **Team roster and identifiers**: `teams[].id` is a 1-20 index re-assigned every
+  season (alphabetical), so it is *not* a stable club key. `teams[].code` is stable
+  across seasons (Arsenal 3, Aston Villa 7, Manchester United 1, ...) and is what
+  `club_aliases.yaml` stores as `fpl_code`. Fixtures and player rows reference teams by
+  the per-season `id`; curate maps them through the same snapshot's roster to `code`
+  before resolving to canonical club IDs.
 - **Player status codes**: exactly five are documented and observed --
   `a` (available), `d` (doubtful), `i` (injured), `s` (suspended), `u` (unavailable).
   The schema fails loudly (`isin` check) on any other code rather than passing it
@@ -65,9 +66,11 @@ ingestion contract every adapter implements.
   unless the schema pins it explicitly via `dtype_kwargs={"time_zone": "UTC"}`. Caught
   by a unit test; would otherwise have been a silent, hard-to-notice bug the first time
   kickoff times were compared or joined against anything else timestamped in UTC.
-- **Cross-source check**: at the time of writing, FPL reports 40 finished fixtures for
-  2026/27 and football-data.co.uk reports 40 played E0 rows for the same season --
-  a useful sanity signal that both sources agree on match count.
+- **Cross-source check**: `curate` reconciles every finished FPL fixture against
+  football-data.co.uk for the current season and fails on any scoreline disagreement;
+  count gaps in either direction are logged (football-data lags FPL by up to a week).
+  FPL is authoritative for the live season's results and kickoff times; football-data
+  for history and odds.
 
 ## Understat
 
@@ -89,10 +92,14 @@ ingestion contract every adapter implements.
   3,840 rows instead of 4,220, with all of 2021/22 silently missing. Passing the full
   pair-code string (e.g. "2122") up front sidesteps the ambiguity rather than fixing it
   -- it was never ambiguous once both halves of the pair are given explicitly.
-- **Team names are Understat's own spelling** (e.g. "Newcastle United" vs
-  football-data's "Newcastle") -- resolving them to canonical club IDs is the entities
-  layer's job, not ingest's. `club_aliases.yaml`'s `understat_name` column is still
-  unpopulated.
+- **Team names are Understat's own spelling**. 29 of the 35 clubs in the window match
+  football-data's spelling exactly; the six that differ are Manchester City, Manchester
+  United, Newcastle United, Nottingham Forest, West Bromwich Albion and Wolverhampton
+  Wanderers. All 35 are mapped in `club_aliases.yaml` (`understat_name`) and a test
+  asserts every observed name resolves.
+- **Refresh**: completed seasons come from soccerdata's cache; the current season is
+  always fetched live, because soccerdata's cache has no TTL and a cached in-progress
+  season would otherwise be served stale on every weekly run.
 - **Cross-source check**: home/away goals from Understat's own match records agree with
   football-data.co.uk's for the same fixtures, and every season lands exactly 380 rows
   (40 for the in-progress 2026/27), matching football-data's counts exactly.

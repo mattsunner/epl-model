@@ -29,8 +29,9 @@ def test_teams_parse():
     df = FPLTeamsSource().parse(payload)
 
     assert df.height == 2
-    assert set(df.columns) == {"fpl_team_id", "name", "short_name"}
+    assert set(df.columns) == {"fpl_team_id", "fpl_code", "name", "short_name"}
     assert df.filter(pl.col("fpl_team_id") == 1)["name"].item() == "Arsenal"
+    assert df.filter(pl.col("fpl_team_id") == 1)["fpl_code"].item() == 3
 
 
 def test_players_parse_preserves_availability_fields():

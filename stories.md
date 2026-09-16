@@ -124,6 +124,8 @@ Acceptance criteria:
 
 ### A-05 · P1 · Correction · design.md describes a repository that does not exist yet
 
+**Status**: Partly done 16 Sep 2026: all eight ADRs exist. Section 3 status markers pending.
+
 **As** a reader of design.md, **I want** to know which parts are built and which are
 planned, **so that** the document is accurate rather than aspirational.
 
@@ -181,6 +183,8 @@ listing football-data.co.uk, FPL, Understat with their terms as recorded in
 
 ### A-09 · P1 · Recommendation · Add CI
 
+**Status**: Done 16 Sep 2026: `ci.yml` (lint, types, tests with coverage floor, artifact validation) and `artifact-validate.yml`.
+
 Evidence: design.md section 11.2 and milestone 1's exit criterion require CI; none exists.
 `pytest-cov` is installed but not configured; there is no coverage floor.
 
@@ -217,6 +221,8 @@ Acceptance criteria:
 
 ### A-11 · P2 · Recommendation · CLI ergonomics and the dead `since` path
 
+**Status**: Partly done 16 Sep 2026: migrate runs inside connect(). Enum for `ingest` and `--refresh` flag pending.
+
 Evidence: `cli.py:17` takes `source: str` and dispatches on string compare; typer would
 render choices and autocomplete from an `Enum`. `Source.fetch(since=...)` is implemented in
 all three adapters but no caller ever passes `since`, so the incremental-refresh path is
@@ -230,6 +236,8 @@ Acceptance criteria:
   section 5.4: "applied idempotently at startup").
 
 ### A-12 · P2 · Correction · Logs and results share stdout
+
+**Status**: Done 16 Sep 2026: JSON logs to stderr, resolved at write time.
 
 Evidence: `logging.py:23` writes JSON logs to stdout; `cli.py:113` writes the results table
 to stdout with `typer.echo`. `just evaluate > results.txt` captures interleaved JSON and
@@ -272,6 +280,8 @@ Acceptance criteria: models raise a project-owned `UnknownClubError`; the backte
 only that; any other exception propagates.
 
 ### A-16 · P2 · Recommendation · Runs have no provenance manifest
+
+**Status**: Partly done 16 Sep 2026: forecast artifacts carry git SHA, dirty flag, snapshot hashes and package versions. Evaluation runs do not yet.
 
 Evidence: backtest and (future) forecast outputs record no git SHA, no data snapshot IDs,
 no library versions. `config_hash` covers model hyperparameters only; the same hash can
@@ -393,6 +403,8 @@ Acceptance criteria:
 
 ### B-03 · P1 · Correction · `fpl_team_id` is a per-season index, not a stable key
 
+**Status**: Done 16 Sep 2026: `fpl_code` landed and keyed; fixtures mapped via the roster.
+
 **As** the maintainer of `club_aliases.yaml`, **I want** the FPL alias to survive
 promotion and relegation, **so that** historical FPL snapshots do not resolve to the wrong
 club next season.
@@ -412,6 +424,8 @@ Acceptance criteria:
 - `tests/fixtures/entities/fpl_team_ids.json` becomes codes.
 
 ### B-04 · P1 · Correction · Understat club names are unresolved
+
+**Status**: Done 16 Sep 2026: all 35 `understat_name` values populated and tested.
 
 Evidence: `understat_name` is null for all 35 clubs. Verified against the live data, 29
 names match football-data exactly and 6 differ:
@@ -462,6 +476,8 @@ Acceptance criteria: an ADR choosing one of:
 
 ### B-07 · P1 · Correction · Current-season results exist in two tables with no declared authority
 
+**Status**: Done 16 Sep 2026: `reconcile_current_season` in curate; FPL authoritative for the live season.
+
 Evidence: `stg_matches` (football-data, weekly) and `mart_fixtures` (FPL, near real time)
 both carry 2026/27 scorelines. They agree today (40 matches, 0 disagreements), but nothing
 checks that, and the forecast command (A-10) needs to know which one is "played matches".
@@ -474,6 +490,8 @@ Acceptance criteria:
 - `forecast` reads played matches from the declared source.
 
 ### B-08 · P1 · Correction · Understat refresh returns stale data for the current season
+
+**Status**: Done 16 Sep 2026: current season always fetched live (`season_batches`).
 
 Evidence: `cli.py:27-30` calls `ingest()` which calls `fetch()` with `since=None`;
 `understat.py:80` then sets `no_cache=False`, so soccerdata reuses

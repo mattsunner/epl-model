@@ -3,10 +3,9 @@
 raw tables, so this module implements three independent Source-conforming classes
 rather than one:
 
-- FPLTeamsSource: the team roster underlying the numeric team IDs used everywhere else
-  in the FPL API. Not itself one of the design's stated responsibilities, but it is the
-  source of the `fpl_team_id` column the club dimension needs (section 5.3), and it is
-  free to land alongside the players endpoint since both come from bootstrap-static.
+- FPLTeamsSource: the team roster mapping the per-season numeric `id` used everywhere
+  else in the FPL API to the stable `code` the club dimension keys on (section 5.3). It
+  is free to land alongside the players endpoint since both come from bootstrap-static.
 - FPLPlayersSource: player availability and suspensions.
 - FPLFixturesSource: the remaining/played fixture list and kickoff times.
 
@@ -38,7 +37,10 @@ log = structlog.get_logger()
 
 
 class TeamSchema(pa.DataFrameModel):
+    # `id` is a 1-20 index re-assigned every season; `code` is the stable club identifier
+    # the club dimension keys on. Both are landed: fixtures reference teams by `id`.
     fpl_team_id: Series[int] = pa.Field(ge=1, unique=True)
+    fpl_code: Series[int] = pa.Field(ge=1, unique=True)
     name: Series[str]
     short_name: Series[str]
 
@@ -121,6 +123,7 @@ class FPLTeamsSource:
         body = json.loads(payload.parts[0].content)
         df = pl.DataFrame(body["teams"]).select(
             pl.col("id").alias("fpl_team_id"),
+            pl.col("code").alias("fpl_code"),
             pl.col("name"),
             pl.col("short_name"),
         )

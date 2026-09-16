@@ -40,3 +40,6 @@ render-evaluation:
 
 forecast:
     uv run plforecast forecast
+
+validate-artifacts:
+    uv run plforecast validate-artifacts

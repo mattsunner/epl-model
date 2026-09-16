@@ -8,7 +8,11 @@ import polars as pl
 import pytest
 
 from plforecast.entities.clubs import load_club_dimension
-from plforecast.storage.curate import curate_fixtures, curate_matches
+from plforecast.storage.curate import (
+    curate_fixtures,
+    curate_matches,
+    reconcile_current_season,
+)
 
 MINI_ALIASES = Path(__file__).parent.parent / "fixtures" / "entities" / "mini_club_aliases.yaml"
 
@@ -37,6 +41,17 @@ def _seed_raw_fpl_fixtures(conn: duckdb.DuckDBPyConnection, rows: list[dict]) ->
     conn.register("_seed", df.to_arrow())
     conn.execute("CREATE TABLE raw_fpl_fixtures AS SELECT * FROM _seed")
     conn.unregister("_seed")
+    # The roster maps this season's 1-3 ids onto the mini dimension's codes (1-3).
+    roster = pl.DataFrame(
+        {
+            "fpl_team_id": [1, 2, 3],
+            "fpl_code": [1, 2, 3],
+            "filename": ["data/raw/fpl-teams/20260101T000000Z/data.parquet"] * 3,
+        }
+    )
+    conn.register("_roster", roster.to_arrow())
+    conn.execute("CREATE TABLE raw_fpl_teams AS SELECT * FROM _roster")
+    conn.unregister("_roster")
 
 
 def _base_match_row(**overrides) -> dict:
@@ -284,3 +299,44 @@ def test_curate_fixtures_resolves_club_ids_and_stamps_season(conn, dimension):
     seasons = set(result["season"].to_list())
     assert len(seasons) == 1
     assert re.match(r"^\d{4}/\d{2}$", seasons.pop())
+
+
+def _seed_reconciliation_scenario(conn, dimension, *, fd_home_goals: int) -> None:
+    season = "2026/27"
+    _seed_raw_footballdata_matches(
+        conn,
+        [
+            _base_match_row(
+                season=season, date=date(2026, 8, 21), fthg=fd_home_goals, ftag=0, ftr="H"
+            )
+        ],
+    )
+    _seed_raw_fpl_fixtures(
+        conn,
+        [
+            _base_fixture_row(),  # arsenal 3-0 chelsea, finished
+            _base_fixture_row(
+                fpl_fixture_id=2, home_team_id=3, away_team_id=2, home_score=1, away_score=1
+            ),  # leeds 1-1 chelsea, finished, football-data has not published it yet
+        ],
+    )
+    curate_matches(conn, dimension)
+    curate_fixtures(conn, dimension)
+    conn.execute(
+        "UPDATE mart_fixtures SET season = ?", [season]
+    )  # curate stamps season from the wall clock (story B-10); pin it for the test
+
+
+def test_reconcile_current_season_reports_count_gaps(conn, dimension):
+    _seed_reconciliation_scenario(conn, dimension, fd_home_goals=3)
+
+    counts = reconcile_current_season(conn)
+
+    assert counts == {"finished_in_both": 1, "fpl_only": 1, "football_data_only": 0}
+
+
+def test_reconcile_current_season_fails_on_scoreline_disagreement(conn, dimension):
+    _seed_reconciliation_scenario(conn, dimension, fd_home_goals=2)  # FPL says 3-0
+
+    with pytest.raises(ValueError, match="disagree on scorelines"):
+        reconcile_current_season(conn)

@@ -2,9 +2,9 @@
   "schema_version": "1.0.0",
   "season": "2026-27",
   "as_of_gameweek": 4,
-  "generated_at": "2026-09-16T16:13:42Z",
+  "generated_at": "2026-09-16T16:18:40Z",
   "provenance": {
-    "git_sha": "c1c071bda5dadbedadcf76c484d7ac4cec00d609",
+    "git_sha": "fb8d1703f4123bcb57bd53cefdcf2427907e7684",
     "git_dirty": true,
     "model": "dixon-coles",
     "model_config_hash": "7e6d67d6f6c252e7a80184eccd67b625e0454abaf88868d034e5c0c80385f7b4",
@@ -19,25 +19,25 @@
       },
       {
         "name": "fpl-fixtures",
-        "fetched_at": "2026-09-15T20:34:29.553766",
+        "fetched_at": "2026-09-16T11:17:06.605121",
         "rows": 380,
         "content_hash": "e6732a2be432c3ee44bd39e075c3642ab9abc7814c02f2a994184965d5e857e6"
       },
       {
         "name": "fpl-players",
-        "fetched_at": "2026-09-15T20:34:28.468580",
+        "fetched_at": "2026-09-16T11:17:06.583254",
         "rows": 659,
         "content_hash": "b99e3ca1cbbdd5e1b3c464a78ec76bcbb0c737c23fdfeb203747307b46d0da3d"
       },
       {
         "name": "fpl-teams",
-        "fetched_at": "2026-09-15T20:34:28.382206",
+        "fetched_at": "2026-09-16T11:17:06.504581",
         "rows": 20,
-        "content_hash": "d30734922bfa5607b985048fcb69a8471c0a4c9314390a75f677d10517a8fb88"
+        "content_hash": "eb7d15c4de1153ec5415d71229a2514d663066b676dbab948b7333e9454a1777"
       },
       {
         "name": "understat",
-        "fetched_at": "2026-09-15T21:16:43.092813",
+        "fetched_at": "2026-09-16T11:17:10.817322",
         "rows": 4220,
         "content_hash": "5fd3f933cefd5be3b9598f456434231c1ee468bb9711379bc310ac088c085795"
       }

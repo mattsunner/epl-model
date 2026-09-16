@@ -218,15 +218,25 @@ A public repo where the model lives in notebooks is unreviewable and untestable,
 
 Detailed inventory lives in `docs/data-sources.md`. Summary of what each source is responsible for:
 
-| Source | Responsibility | Cadence |
-| --- | --- | --- |
-| football-data.co.uk | Match results and closing odds, E0 and E1, 1993 onward | Weekly |
-| Understat | Team and shot-level xG, 2014/15 onward | Weekly |
-| FPL API | Fixture list, kickoff times, player availability and suspensions | Weekly |
-| ClubElo | Independent strength prior, external benchmark probabilities | Weekly |
-| Transfermarkt | Squad market value, promoted-club prior, injury history | Per transfer window |
+| Source | Responsibility | Cadence | Status |
+| --- | --- | --- | --- |
+| football-data.co.uk | Match results and closing odds, E0 and E1, 1993 onward | Weekly | Built |
+| Understat | Team and shot-level xG, 2014/15 onward | Weekly | Built (team-level) |
+| FPL API | Fixture list, kickoff times, player availability and suspensions | Weekly | Built |
+| ClubElo | Independent strength prior, external benchmark probabilities | Weekly | v1 (story C-16) |
+| Transfermarkt | Squad market value, promoted-club prior, injury history | Per transfer window | Deferred to v2 (story C-16) |
 
 FBref is explicitly excluded as a live source. Its Opta-derived advanced stats were removed in January 2026 and no longer update.
+
+**ClubElo in v1, Transfermarkt deferred (story C-16, decided 16 September 2026).**
+ClubElo is a single CSV endpoint, needs no club-alias maintenance beyond the usual
+per-source name column, and directly unblocks `build_prior()`'s already-built
+`external_rating`/`external_weight` parameters (ADR 0006) -- it is the one remaining
+piece of the *decided* promoted-club prior design (design.md section 6.3, decision 2 in
+section 14) with no adapter yet. Transfermarkt adds a third club-naming scheme to
+maintain and is scraped (ToS-sensitive) for a signal (squad market value) the prior
+does not strictly need: ClubElo's own rating already blends recent form and squad
+quality. Revisit Transfermarkt if ClubElo alone proves insufficient once backtested.
 
 ### 5.2 Ingestion contract
 
@@ -312,7 +322,18 @@ Optional branch, only if 2 and 3 plateau: gradient boosting on engineered featur
 - **Promoted-club priors**: ClubElo rating at season start blended with squad market value, shrunk toward a recency-weighted promoted-club mean. **No Championship xG.** Understat does not cover the Championship, and deriving a league-strength conversion from goals would mean estimating a factor from roughly three clubs per season. ClubElo already performs continuous cross-league strength conversion and covers lower divisions by club-name lookup, so the conversion is both free and better estimated than a bespoke one. See `docs/adr/0006-promoted-club-priors.md`.
 - **The promoted-club prior must carry real variance, not a point estimate.** The empirical record is unstable enough that a tight prior is indefensible. All six promoted clubs were relegated in each of 2023/24 and 2024/25, which had not happened once since 1997/98. Then 2025/26 broke it: Sunderland finished 7th on 54 points, the joint-best finish by a promoted side since Wolves in 2018/19, Leeds finished 14th, and Burnley was the only promoted club to go down. A prior fit on the two preceding seasons would have given Sunderland near-certain relegation. Anchor the prior mean on the longer record: the average points total for the club finishing 18th across the previous 22 completed seasons is 33.8.
 - **Promoted clubs are not interchangeable.** For 2026/27 the promoted clubs are Coventry, Ipswich and Hull. Ipswich has 2024/25 top-flight data and keeps it; the prior gate (`needs_prior`) counts evidence with the model's own decay, so Ipswich is shrunk toward the prior only as far as its data has decayed, while Hull's 2016/17 season counts for almost nothing. The prior enters the shipped models as pseudo-observations against the real clubs in the fixture list (ADR 0006, story C-08).
-- **Home advantage is time-varying**, not a constant. Fit it as a parameter over recent seasons.
+- **Home advantage is time-varying**, not a constant. Fit it as a parameter over recent
+  seasons. **Status (story C-14): satisfied by decay for rungs 1-3, not yet an explicit
+  per-season term.** `PoissonModel` fits one home-advantage term with no decay (static,
+  by rung 1's own definition); `DixonColesModel` and `XGRateModel` both fit one home
+  term but over an exponentially time-decayed window, so it already tracks *recent*
+  form more than a flat average would -- an approximation of time-varying, not the
+  literal per-season parameter this bullet originally asked for. A genuine per-season
+  home-advantage term (one coefficient per season rather than one continuously decayed
+  scalar) is deferred to the hierarchical model (rung 4), where it fits naturally
+  alongside the other partially-pooled parameters. Not treated as a defect: the decayed
+  approximation is a real, if softer, version of the same idea, and no backtest to date
+  has shown the flat decayed term to be a binding constraint on RPS.
 - **European competition congestion is deferred.** Rest-day derivation from FPL `kickoff_time` is built in `features/schedule.py` from v1 because it is nearly free and belongs in the curated tables regardless, but it does not enter the model until the hierarchical baseline is established. The reason is confounding: clubs in European competition are also the strongest clubs, so a naive participation indicator partly re-encodes team strength and will appear predictive for the wrong reason. The genuine residual is a rest-day effect and it is small. Add it as a single additive term afterwards and keep it only if it improves held-out RPS on its own.
 
 ### 6.4 Uncertainty propagation
@@ -621,7 +642,7 @@ Roughly 15 gameweeks to the December midpoint.
 | Phase | Deliverable | Exit criterion |
 | --- | --- | --- |
 | 1. Skeleton | Repo, toolchain, CI, package layout, DuckDB schema | `just test` passes on an empty pipeline |
-| 2. Ingest | All five adapters, club dimension, curated marts | Every club resolves; marts populated 2015/16 to date |
+| 2. Ingest | football-data.co.uk, Understat, FPL, club dimension, curated marts (ClubElo deferred to a later milestone per story C-16; Transfermarkt deferred to v2) | Every club resolves; marts populated 2015/16 to date |
 | 3. Baseline end to end | Poisson model plus simulation plus artifact plus published page | A forecast is live, however crude |
 | 4. Evaluation | RPS, calibration, walk-forward backtest, market baseline | Published baseline numbers in `docs/evaluation.md` |
 | 5. Dixon-Coles | Time decay, tuned `xi` | Beats Poisson on held-out RPS |
@@ -634,15 +655,21 @@ Phase 3 before phase 4 and 5 is deliberate. A working end-to-end pipeline with a
 
 ## 13. Risks
 
-| Risk | Impact | Mitigation |
-| --- | --- | --- |
-| Understat scraper breaks mid-season | No current xG, model degrades to goals | Snapshot weekly and commit nothing but keep local history; goals-based fallback path in `features/strength.py` |
-| Club alias drift on promoted clubs | Silent wrong joins | Strict resolution that raises; test asserting single resolution |
-| Overfitting the decay parameter to backtest | Flattering in-sample, poor live | Tune on a holdout period disjoint from the reporting period |
-| Promoted-club prior fit to a short recent window | Confidently wrong on a club like Sunderland in 2025/26 | Prior mean anchored on 22 seasons, wide variance, recency weighting capped; documented in `model-card.md` |
-| Model does not beat closing odds | Disappointment, or worse, quiet omission | Stated as a likely outcome up front in the README and model card |
-| Scope creep into player-level modelling | Nothing ships by December | Non-goals section is binding |
-| Notebook logic leaking into the pipeline | Repo becomes unreviewable | Pre-commit enforcement, not discipline |
+Kept live (story C-17): updated as risks materialise or are closed out, not written once
+and left static. "Status" reflects what is actually known as of 16 September 2026, not
+what was anticipated when the row was first written.
+
+| Risk | Impact | Mitigation | Status |
+| --- | --- | --- | --- |
+| Understat scraper breaks mid-season | No current xG, model degrades to goals | Snapshot weekly and commit nothing but keep local history; goals-based fallback path in `features/strength.py` | Open, not yet materialised |
+| Club alias drift on promoted clubs | Silent wrong joins | Strict resolution that raises; test asserting single resolution | Mitigated; also caught a related bug (FPL's per-season `id` vs stable `code`, story B-03) before it shipped |
+| Overfitting the decay parameter to backtest | Flattering in-sample, poor live | Tune on a holdout period disjoint from the reporting period | Mitigated: `plforecast tune`, disjoint selection/report seasons (story C-03) |
+| Promoted-club prior fit to a short recent window | Confidently wrong on a club like Sunderland in 2025/26 | Prior mean anchored on 22 seasons, wide variance, recency weighting capped; documented in `model-card.md` | Partly mitigated: the prior itself is built and wired in (story C-08); recency-weighting half-life is still an open question (section 15) |
+| Model does not beat closing odds | Disappointment, or worse, quiet omission | Stated as a likely outcome up front in the README and model card | Materialised as anticipated: the shipped model (`xg-rates`) is 0.0041 RPS behind the market, inside the 0.005 stretch target but not beating it; stated in `docs/evaluation.md` |
+| Scope creep into player-level modelling | Nothing ships by December | Non-goals section is binding | Open, not yet materialised |
+| Notebook logic leaking into the pipeline | Repo becomes unreviewable | Pre-commit enforcement, not discipline | Mitigated; no notebooks exist yet (ADR 0003) |
+| **Benchmark price source stops publishing mid-window** (materialised, not anticipated) | Market comparison has no price for the live season | football-data.co.uk stopped publishing Pinnacle closing prices after 8 January 2026 and dropped the columns from the 2026/27 file entirely. Fixed with a fallback chain (Pinnacle, then Betfair Exchange, then the site's average closing price), source recorded per match (ADR 0007) | Materialised and mitigated |
+| **FPL's per-season team `id` used as a stable key** (materialised, not anticipated) | Silent wrong club resolution across a promotion/relegation boundary, since the same `id` value means a different club next season | `club_aliases.yaml` now keys on `teams[].code`, FPL's actually-stable identifier; fixtures map through the current snapshot's roster (story B-03) | Materialised and mitigated |
 
 ---
 
@@ -658,6 +685,7 @@ Closed 14 September 2026. Each has a corresponding ADR.
 | 4 | Per-fixture predictions | Yes, as a separate document. Score-level detail only, no full scoreline matrix. | 9.2 |
 | 5 | European congestion feature | Deferred. Rest-day data captured in v1, not modelled until after the hierarchical baseline. | 6.3 |
 | 6 | Multi-league generalisation | Three cheap structural choices now (tiebreak strategy, club-season bridge, competition config). Nothing else. | 5.3, 7.2, 7.3 |
+| 7 | ClubElo and Transfermarkt scope | ClubElo is v1 (one CSV endpoint, unblocks the promoted-club prior's external-rating path). Transfermarkt deferred to v2. | 5.1 |
 
 ## 15. Remaining open questions
 

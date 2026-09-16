@@ -888,6 +888,8 @@ tests compare fitted parameters with a tolerance and simulation outputs exactly.
 
 ### C-14 · P3 · Recommendation · Home advantage
 
+**Status**: Done 16 Sep 2026: design.md 6.3's home-advantage bullet records the status for all three shipped rungs (decay-approximated, not yet an explicit per-season term; deferred to rung 4).
+
 Evidence: design.md 6.3 asks for a time-varying home advantage. Both shipped models fit one
 home term over the decayed window, which approximates it. Not a defect; record it as
 "satisfied by decay for rungs 1 and 2; explicit per-season term in rung 3".
@@ -918,6 +920,8 @@ Recommended order, with the P0 corrections first in each window:
 
 ### C-16 · P2 · Recommendation · ClubElo and Transfermarkt: decide whether they are v1
 
+**Status**: Done 16 Sep 2026: ClubElo decided as v1 (unblocks the already-built `external_rating` path in `build_prior()`), Transfermarkt deferred to v2. design.md 5.1, milestone 2, and decision 7 in section 14 updated. The adapter itself is not built (out of scope for 'decide whether they are v1').
+
 Evidence: design.md lists five sources and milestone 2 requires "all five adapters". The
 prior module already supports an external rating but nothing supplies one. Both adapters
 are scraped, ToS-sensitive, and add club-alias maintenance for a second and third naming
@@ -928,6 +932,8 @@ endpoint, covers lower divisions, directly feeds the prior); Transfermarkt defer
 Update section 5.1, milestone 2, and the risk table.
 
 ### C-17 · P3 · Recommendation · Keep the risk table live
+
+**Status**: Done 16 Sep 2026: risk table gains a Status column; the two materialised-but-unlisted risks (benchmark price source dropped, story B-02; FPL's per-season id used as a key, story B-03) added with their mitigations; every other row's status updated against what's actually known now.
 
 Evidence: design.md section 13's table is good but static. Two risks have already
 materialised and are not recorded there: the benchmark price source disappeared mid-season

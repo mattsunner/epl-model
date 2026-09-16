@@ -63,7 +63,8 @@ def test_contested_tie_falls_through_to_away_goals_when_h2h_points_level():
 
 def test_uncontested_tie_is_not_resolved_by_head_to_head():
     # b and c are tied for 2nd/3rd -- not contested in this 4-club config -- even though
-    # c actually beat b head-to-head. Head-to-head must NOT be applied here.
+    # c beat b head-to-head. Head-to-head must NOT decide it; the order is random, so
+    # across many seeds both orderings must occur (h2h would always put c first).
     standings = [
         ClubSeasonResult("a", points=30, goal_difference=20, goals_for=30),
         ClubSeasonResult("b", points=15, goal_difference=0, goals_for=15),
@@ -72,9 +73,15 @@ def test_uncontested_tie_is_not_resolved_by_head_to_head():
     ]
     matches = _matches([("c", "b", 3, 0)])  # c thrashed b, but it must not matter here
 
-    ranked = PremierLeagueTiebreaks(SMALL).rank(standings, matches, rng=np.random.default_rng(0))
-    # Stable sort preserves b before c (their order in `standings`), unaffected by h2h.
-    assert ranked[1:3] == ["b", "c"]
+    orderings = {
+        tuple(
+            PremierLeagueTiebreaks(SMALL).rank(standings, matches, rng=np.random.default_rng(s))[
+                1:3
+            ]
+        )
+        for s in range(40)
+    }
+    assert orderings == {("b", "c"), ("c", "b")}
 
 
 def test_relegation_tie_is_contested():

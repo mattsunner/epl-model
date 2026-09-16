@@ -3,10 +3,15 @@ resolves club identity, and materialises stg_*/mart_* tables.
 
 - stg_club_season: which clubs were in the Premier League each season.
 - stg_matches: played match results (football-data.co.uk), club IDs resolved, one row
-  per natural key -- deduplicated across every re-ingested snapshot, keeping the most
-  recently landed copy of each match.
+  per natural key.
 - mart_fixtures: the full current-season fixture list (FPL), club IDs resolved. This is
   what the simulation engine reads remaining fixtures from.
+
+Every raw source is a full-state snapshot: each ingest run lands the complete current
+view of that source, and the raw_* views union every snapshot ever landed. Curate
+therefore always starts from the most recently landed snapshot of each view
+(`latest_snapshot_sql`), and stg_matches additionally dedupes on its natural key as a
+second guard.
 
 mart_matches (a model-ready superset of stg_matches, per design.md's repo layout) and
 mart_odds (a normalised, multi-bookmaker odds table) are deliberately not built yet --
@@ -66,6 +71,19 @@ def _assert_result_matches_score(df: pl.DataFrame) -> None:
         raise ValueError(f"result column disagrees with the scoreline for rows: {bad}")
 
 
+def latest_snapshot_sql(view: str) -> str:
+    """Rows of `view` belonging to its most recently landed snapshot. Snapshot directories
+    are named with a fixed-width UTC timestamp, so the lexicographic maximum of the
+    `filename` column every raw view exposes is the latest one."""
+    # max() over DISTINCT rather than max(filename) directly: DuckDB 1.5's optimizer tries
+    # to answer a bare max(filename) from Parquet metadata and hits an internal error on
+    # these union_by_name views. The DISTINCT subquery sidesteps that rewrite.
+    return (
+        f"SELECT * FROM {view} WHERE filename = "
+        f"(SELECT max(f) FROM (SELECT DISTINCT filename AS f FROM {view}))"
+    )
+
+
 def _materialize(conn: duckdb.DuckDBPyConnection, table: str, df: pl.DataFrame) -> None:
     staging_name = f"_incoming_{table}"
     conn.register(staging_name, df.to_arrow())
@@ -90,7 +108,10 @@ class MartFixtureSchema(pa.DataFrameModel):
 
 
 def curate_club_season_membership(conn: duckdb.DuckDBPyConnection) -> None:
-    matches = conn.execute("SELECT season, home_team, away_team FROM raw_footballdata_matches").pl()
+    matches = conn.execute(
+        "SELECT season, home_team, away_team FROM "
+        f"({latest_snapshot_sql('raw_footballdata_matches')})"
+    ).pl()
     dimension = load_club_dimension()
     membership = build_club_season_membership(matches, dimension)
 
@@ -100,20 +121,18 @@ def curate_club_season_membership(conn: duckdb.DuckDBPyConnection) -> None:
 
 def curate_matches(conn: duckdb.DuckDBPyConnection, dimension: ClubDimension | None = None) -> None:
     """One row per (season, home team, away team) -- the natural key for a football-data
-    row, since each pairing plays at a given ground exactly once a season. A re-ingest
-    lands a brand new full-backfill snapshot every time (design.md section 5.2), so
-    raw_footballdata_matches accumulates a duplicate copy of every already-played match
-    on each re-run; picking the most recently landed snapshot per natural key is what
-    keeps this a one-row-per-match table rather than a growing pile of duplicates."""
+    row, since each pairing plays at a given ground exactly once a season. Starts from
+    the latest snapshot, then keeps the most recently landed row per natural key as a
+    second guard, so the table is one row per match however many snapshots exist."""
     dimension = dimension or load_club_dimension()
     deduped = conn.execute(
-        """
+        f"""
         SELECT season, date, home_team, away_team, fthg, ftag, ftr, psch, pscd, psca
         FROM (
             SELECT *, row_number() OVER (
                 PARTITION BY season, home_team, away_team ORDER BY filename DESC
             ) AS rn
-            FROM raw_footballdata_matches
+            FROM ({latest_snapshot_sql("raw_footballdata_matches")})
         )
         WHERE rn = 1
         """
@@ -159,7 +178,7 @@ def curate_fixtures(
     dimension = dimension or load_club_dimension()
     fixtures = conn.execute(
         "SELECT fpl_fixture_id, gameweek, kickoff_time, home_team_id, away_team_id, "
-        "home_score, away_score, finished FROM raw_fpl_fixtures"
+        f"home_score, away_score, finished FROM ({latest_snapshot_sql('raw_fpl_fixtures')})"
     ).pl()
 
     home_club_ids = dimension.resolve(fixtures["home_team_id"].to_list(), "fpl")

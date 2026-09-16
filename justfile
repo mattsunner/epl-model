@@ -27,6 +27,8 @@ ingest-understat:
 migrate:
     uv run plforecast db-migrate
 
+bootstrap: ingest-footballdata ingest-fpl ingest-understat curate
+
 curate:
     uv run plforecast curate
 

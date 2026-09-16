@@ -153,3 +153,32 @@ def test_no_remaining_fixtures_gives_certain_final_table() -> None:
     # Every simulation agrees on who finished where: one position per club has all the
     # probability mass.
     assert ((result.position_counts == 0) | (result.position_counts == 500)).all()
+
+
+def test_identical_clubs_get_symmetric_position_distributions() -> None:
+    """Regression for the alphabetical-tiebreak bias: with a symmetric model and no
+    played matches, no club may be systematically favoured over another in exact ties
+    at uncontested positions. Club ids are chosen so alphabetical order is fixed."""
+    club_ids = ["aaa", "bbb", "ccc", "ddd", "eee", "fff"]
+    remaining_fixtures = _matches_frame(_round_robin(club_ids), ["home_club_id", "away_club_id"])
+    played_matches = _matches_frame(
+        [], ["home_club_id", "away_club_id", "home_goals", "away_goals"]
+    )
+
+    # Only position 1 and the last position are contested; 2-5 are where ties are
+    # awarded jointly and where the old stable sort favoured "aaa".
+    competition = CompetitionConfig(n_clubs=6, relegation_spots=1, european_spots=1)
+    result = simulate_season(
+        played_matches,
+        remaining_fixtures,
+        _FixedPoissonModel(home_lambda=1.2, away_lambda=1.2),
+        PremierLeagueTiebreaks(competition),
+        n_simulations=4000,
+        max_goals=6,
+        seed=11,
+    )
+
+    pmf = result.position_pmf
+    # Every club's expected position should be the same up to Monte Carlo noise.
+    expected_position = pmf @ np.arange(1, 7)
+    assert expected_position.max() - expected_position.min() < 0.15

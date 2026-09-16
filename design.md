@@ -284,7 +284,7 @@ Zones:
 
 Rationale for DuckDB over Postgres or plain Parquet: single-file, zero-service, reads Parquet natively, and the analytical query patterns here are exactly what it is built for. A local-only pipeline should not require a running database. See `docs/adr/0002-duckdb-as-analytical-store.md`.
 
-Schema changes go through numbered SQL migration files applied idempotently at startup.
+`raw_*` views are recreated on every connection by `storage/db.py` because they embed the absolute path of `data/raw/`; a source with no snapshot yet simply has no view. Curated tables are rebuilt wholesale by `curate`, always from the most recently landed snapshot of each source. Numbered SQL migration files, applied once each at connection time, are reserved for tables whose history matters.
 
 ---
 

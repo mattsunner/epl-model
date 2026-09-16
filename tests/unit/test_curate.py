@@ -113,9 +113,40 @@ def _base_fixture_row(**overrides) -> dict:
         "home_score": 3,
         "away_score": 0,
         "finished": True,
+        "filename": "data/raw/fpl-fixtures/20260101T000000Z/data.parquet",
     }
     row.update(overrides)
     return row
+
+
+def test_curate_fixtures_uses_only_the_latest_snapshot(conn, dimension):
+    """Every FPL ingest lands the full fixture list again. Without selecting the latest
+    snapshot, the second ingest would double every fixture_id and fail the unique check
+    -- the exact failure a weekly refresh would have hit."""
+    _seed_raw_fpl_fixtures(
+        conn,
+        [
+            _base_fixture_row(
+                finished=False,
+                home_score=None,
+                away_score=None,
+                filename="data/raw/fpl-fixtures/20260101T000000Z/data.parquet",
+            ),
+            _base_fixture_row(
+                finished=True,
+                home_score=3,
+                away_score=0,
+                filename="data/raw/fpl-fixtures/20260108T000000Z/data.parquet",
+            ),
+        ],
+    )
+
+    curate_fixtures(conn, dimension)
+    result = conn.execute("SELECT * FROM mart_fixtures").pl()
+
+    assert result.height == 1
+    assert result["finished"].item() is True
+    assert result["home_goals"].item() == 3
 
 
 def test_curate_fixtures_resolves_club_ids_and_stamps_season(conn, dimension):

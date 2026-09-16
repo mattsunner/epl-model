@@ -12,4 +12,4 @@ everything is reproducible from source given the adapters in `src/plforecast/ing
 | `raw/understat/{fetched_at}/data.parquet` | Team-level xG, goals, PPDA, 2015/16 onward | `just ingest-understat` |
 | `cache/football-data/*.bin`, `cache/fpl/*.bin` | TTL-cached raw HTTP responses, keyed by URL hash | Populated automatically by the adapters; safe to delete |
 | `cache/understat-soccerdata/` | soccerdata's own scrape cache (no TTL, on/off only) | Populated automatically; safe to delete |
-| `pl.duckdb` | Curated DuckDB database: `raw_*` views, plus `stg_club_season`, `stg_matches`, `mart_fixtures` | `just migrate` then `just curate` |
+| `pl.duckdb` | Curated DuckDB database: `raw_*` views (recreated on every connection), plus `stg_club_season`, `stg_matches`, `mart_fixtures` | `just curate` (after the ingests above) |

@@ -23,14 +23,16 @@ not-yet-built hierarchical model, per design.md section 6.4, is meant to).
 
 ```bash
 uv sync
-just migrate              # apply DuckDB migrations
-just ingest-footballdata   # land match results + closing odds, 2015/16 onward
-just ingest-fpl            # land fixtures, kickoff times, player availability
-just ingest-understat      # land team-level xG
-just curate                # resolve club identity, materialise stg_*/mart_* tables
+uv run pre-commit install  # hooks run the same ruff/mypy that `just check` runs
+just bootstrap             # ingest all three sources, then curate (first run, ~2 min)
 just evaluate              # walk-forward backtest against the market baseline
 just check                 # lint, typecheck, test
 ```
+
+`just bootstrap` is `just ingest-footballdata`, `just ingest-fpl`, `just ingest-understat`
+and `just curate` in that order. Raw views are (re)created on every database connection,
+so there is no separate migrate step; `just migrate` exists only to apply table
+migrations explicitly.
 
 ## How it performs against the market
 

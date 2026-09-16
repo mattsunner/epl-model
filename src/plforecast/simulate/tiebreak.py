@@ -13,6 +13,10 @@ PremierLeagueTiebreaks implements the exact post-2019/20 ordering:
 5. Away goals in those head-to-head matches
 6. A playoff at a neutral ground
 
+Ties in positions where nothing is at stake are awarded jointly by the competition; here
+they are ordered at random from the supplied generator so no club is systematically
+favoured by input order.
+
 Steps 4 and 5 make a genuine playoff (step 6) far less likely than under the previous
 rules. Most public models stop at step 3, which is wrong and cheap to fix -- this
 module is that fix. It is independently testable against known historical cases
@@ -85,8 +89,15 @@ class PremierLeagueTiebreaks:
 
             group = ordered[i : j + 1]
             positions = set(range(i + 1, j + 2))  # 1-indexed positions this group occupies
-            if len(group) > 1 and positions & contested:
-                group = self._break_tie(group, matches, rng=rng)
+            if len(group) > 1:
+                if positions & contested:
+                    group = self._break_tie(group, matches, rng=rng)
+                else:
+                    # Nothing is at stake, so the competition awards the positions
+                    # jointly. A random order is the unbiased stand-in: a stable sort
+                    # would hand the higher position to whichever club came first in
+                    # the input (alphabetically, in the simulation engine), every time.
+                    group = [group[k] for k in rng.permutation(len(group))]
             result.extend(club.club_id for club in group)
             i = j + 1
 

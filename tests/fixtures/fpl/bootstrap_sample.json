@@ -1,0 +1,26 @@
+{
+  "teams": [
+    {"id": 1, "name": "Arsenal", "short_name": "ARS", "strength": 4},
+    {"id": 7, "name": "Bournemouth", "short_name": "BOU", "strength": 3}
+  ],
+  "elements": [
+    {
+      "id": 1,
+      "web_name": "Raya",
+      "team": 1,
+      "status": "a",
+      "chance_of_playing_this_round": null,
+      "chance_of_playing_next_round": null,
+      "news": ""
+    },
+    {
+      "id": 6,
+      "web_name": "Saliba",
+      "team": 1,
+      "status": "i",
+      "chance_of_playing_this_round": 0,
+      "chance_of_playing_next_round": 0,
+      "news": "Back injury - Unknown return date"
+    }
+  ]
+}

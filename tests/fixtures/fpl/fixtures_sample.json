@@ -1,0 +1,22 @@
+[
+  {
+    "id": 1,
+    "event": 1,
+    "finished": true,
+    "kickoff_time": "2026-08-21T19:00:00Z",
+    "team_h": 1,
+    "team_a": 7,
+    "team_h_score": 3,
+    "team_a_score": 0
+  },
+  {
+    "id": 41,
+    "event": 5,
+    "finished": false,
+    "kickoff_time": "2026-09-18T19:00:00Z",
+    "team_h": 4,
+    "team_a": 6,
+    "team_h_score": null,
+    "team_a_score": null
+  }
+]

@@ -1,0 +1,34 @@
+set dotenv-load := true
+
+sync:
+    uv sync
+
+lint:
+    uv run ruff check .
+    uv run ruff format --check .
+
+typecheck:
+    uv run mypy src/
+
+test:
+    uv run pytest
+
+check: lint typecheck test
+
+ingest-footballdata:
+    uv run plforecast ingest football-data
+
+ingest-fpl:
+    uv run plforecast ingest fpl
+
+ingest-understat:
+    uv run plforecast ingest understat
+
+migrate:
+    uv run plforecast db-migrate
+
+curate:
+    uv run plforecast curate
+
+evaluate:
+    uv run plforecast evaluate

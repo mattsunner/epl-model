@@ -1,0 +1,25 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Data: nothing here is committed, see data/MANIFEST.md
+data/*
+!data/.gitkeep
+!data/MANIFEST.md
+
+# Notebook checkpoints
+.ipynb_checkpoints/
+
+# mypy / pytest / coverage caches
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/

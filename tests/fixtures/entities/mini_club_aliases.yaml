@@ -1,0 +1,34 @@
+# Small synthetic alias table for isolated club-season membership and curate.py tests --
+# deliberately separate from the real production club_aliases.yaml, so these tests don't
+# depend on it (or break when a real club gets added/renamed there). fpl_team_id is set
+# for three of the four clubs and left null for Watford, so tests can exercise both the
+# football_data and fpl resolution paths, plus a club with no FPL presence.
+clubs:
+  - club_id: arsenal
+    display_name: Arsenal
+    football_data_name: Arsenal
+    fpl_team_id: 1
+    clubelo_name: null
+    understat_name: null
+    transfermarkt_id: null
+  - club_id: chelsea
+    display_name: Chelsea
+    football_data_name: Chelsea
+    fpl_team_id: 2
+    clubelo_name: null
+    understat_name: null
+    transfermarkt_id: null
+  - club_id: leeds
+    display_name: Leeds United
+    football_data_name: Leeds
+    fpl_team_id: 3
+    clubelo_name: null
+    understat_name: null
+    transfermarkt_id: null
+  - club_id: watford
+    display_name: Watford
+    football_data_name: Watford
+    fpl_team_id: null
+    clubelo_name: null
+    understat_name: null
+    transfermarkt_id: null

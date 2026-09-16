@@ -51,10 +51,108 @@ def _base_match_row(**overrides) -> dict:
         "psch": 2.1,
         "pscd": 3.3,
         "psca": 3.7,
+        "bfech": None,
+        "bfecd": None,
+        "bfeca": None,
+        "b365ch": 2.0,
+        "b365cd": 3.4,
+        "b365ca": 3.8,
+        "maxch": None,
+        "maxcd": None,
+        "maxca": None,
+        "avgch": 2.05,
+        "avgcd": 3.35,
+        "avgca": 3.75,
         "filename": "data/raw/football-data/20260101T000000Z/data.parquet",
     }
     row.update(overrides)
     return row
+
+
+def _seed_two_row_odds_scenario(conn) -> None:
+    _seed_raw_footballdata_matches(
+        conn,
+        [
+            _base_match_row(),  # Pinnacle present -> benchmark is Pinnacle
+            _base_match_row(
+                home_team="Leeds",
+                away_team="Watford",
+                psch=None,
+                pscd=None,
+                psca=None,
+                bfech=2.2,
+                bfecd=3.4,
+                bfeca=3.6,
+            ),  # Pinnacle gone -> falls back to Betfair Exchange, not Avg
+        ],
+    )
+
+
+def test_curate_matches_applies_the_benchmark_fallback_chain(conn, dimension):
+    _seed_two_row_odds_scenario(conn)
+
+    curate_matches(conn, dimension)
+    result = conn.execute("SELECT * FROM stg_matches ORDER BY match_id").pl()
+
+    arsenal = result.row(0, named=True)
+    assert arsenal["benchmark_source"] == "pinnacle"
+    assert arsenal["benchmark_home_odds"] == pytest.approx(2.1)
+
+    leeds = result.row(1, named=True)
+    assert leeds["benchmark_source"] == "betfair_exchange"
+    assert leeds["benchmark_home_odds"] == pytest.approx(2.2)
+
+
+def test_curate_matches_builds_long_odds_table(conn, dimension):
+    _seed_two_row_odds_scenario(conn)
+
+    curate_matches(conn, dimension)
+    odds = conn.execute("SELECT * FROM stg_odds ORDER BY match_id, bookmaker").pl()
+
+    by_match = {
+        m: sorted(g["bookmaker"].to_list())
+        for m, g in odds.group_by("match_id", maintain_order=True)
+    }
+    assert by_match[("2015-16-arsenal-chelsea",)] == ["bet365", "market_avg", "pinnacle"]
+    assert by_match[("2015-16-leeds-watford",)] == ["bet365", "betfair_exchange", "market_avg"]
+    assert (odds["price_type"] == "closing").all()
+
+
+def test_curate_matches_benchmark_is_null_when_no_closing_price_exists(conn, dimension):
+    _seed_raw_footballdata_matches(
+        conn,
+        [
+            _base_match_row(
+                **{
+                    c: None
+                    for c in (
+                        "psch",
+                        "pscd",
+                        "psca",
+                        "bfech",
+                        "bfecd",
+                        "bfeca",
+                        "b365ch",
+                        "b365cd",
+                        "b365ca",
+                        "maxch",
+                        "maxcd",
+                        "maxca",
+                        "avgch",
+                        "avgcd",
+                        "avgca",
+                    )
+                }
+            )
+        ],
+    )
+
+    curate_matches(conn, dimension)
+    row = conn.execute("SELECT * FROM stg_matches").pl().row(0, named=True)
+
+    assert row["benchmark_source"] is None
+    assert row["benchmark_home_odds"] is None
+    assert conn.execute("SELECT count(*) FROM stg_odds").fetchone()[0] == 0
 
 
 def test_curate_matches_keeps_most_recent_snapshot_per_natural_key(conn, dimension):
@@ -79,7 +177,7 @@ def test_curate_matches_keeps_most_recent_snapshot_per_natural_key(conn, dimensi
     result = conn.execute("SELECT * FROM stg_matches").pl()
 
     assert result.height == 1
-    assert result["pinnacle_home_odds"].item() == pytest.approx(1.9)
+    assert result["benchmark_home_odds"].item() == pytest.approx(1.9)
 
 
 def test_curate_matches_resolves_club_ids_and_builds_match_id(conn, dimension):

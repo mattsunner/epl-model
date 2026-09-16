@@ -11,10 +11,10 @@ multiplicative reported alongside so the methodological choice stays visible rat
 than buried in a config file. `docs/evaluation.md` is where both get reported together
 once the evaluation harness actually runs end to end and has numbers to publish.
 
-Coverage gap (docs/data-sources.md): Pinnacle closing odds are missing for the entire
-2026/27 season and roughly the second half of 2025/26 in the data this pipeline has
-ingested. Matches with a null odds column are dropped here, not imputed -- an honest
-gap in the benchmark, not something to paper over with a guessed price.
+Price source: `benchmark_*_odds` on stg_matches, chosen per match by curate's fallback
+chain (Pinnacle closing, then Betfair Exchange closing, then the site's average closing
+price -- ADR 0007). `benchmark_source` is carried through so results can be sliced by
+it. Matches with no complete closing price from any set are dropped here, not imputed.
 """
 
 from __future__ import annotations
@@ -25,19 +25,23 @@ from penaltyblog.implied import calculate_implied
 
 
 def market_probabilities(matches: pl.DataFrame, *, method: str = "shin") -> pl.DataFrame:
-    """`matches` needs `pinnacle_home_odds`, `pinnacle_draw_odds`, `pinnacle_away_odds`
+    """`matches` needs `benchmark_home_odds`, `benchmark_draw_odds`, `benchmark_away_odds`
     (stg_matches' shape). Drops rows with any null odds column. Returns the input rows
     (odds-complete subset) with `p_home`, `p_draw`, `p_away` columns added."""
     complete = matches.filter(
-        pl.col("pinnacle_home_odds").is_not_null()
-        & pl.col("pinnacle_draw_odds").is_not_null()
-        & pl.col("pinnacle_away_odds").is_not_null()
+        pl.col("benchmark_home_odds").is_not_null()
+        & pl.col("benchmark_draw_odds").is_not_null()
+        & pl.col("benchmark_away_odds").is_not_null()
     )
 
     probs = np.array(
         [
             calculate_implied(
-                [row["pinnacle_home_odds"], row["pinnacle_draw_odds"], row["pinnacle_away_odds"]],
+                [
+                    row["benchmark_home_odds"],
+                    row["benchmark_draw_odds"],
+                    row["benchmark_away_odds"],
+                ],
                 method=method,
             ).probabilities
             for row in complete.iter_rows(named=True)

@@ -70,7 +70,8 @@ def evaluate() -> None:
     conn = connect()
     matches = conn.execute(
         "SELECT match_id, season, date, home_club_id, away_club_id, home_goals, "
-        "away_goals, result, pinnacle_home_odds, pinnacle_draw_odds, pinnacle_away_odds "
+        "away_goals, result, benchmark_home_odds, benchmark_draw_odds, benchmark_away_odds, "
+        "benchmark_source "
         "FROM stg_matches WHERE season != (SELECT max(season) FROM stg_matches) "
         "ORDER BY date"
     ).pl()

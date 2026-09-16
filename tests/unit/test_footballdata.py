@@ -6,7 +6,13 @@ import polars as pl
 import pytest
 
 from plforecast.ingest.base import RawPart, RawPayload
-from plforecast.ingest.footballdata import FootballDataSource, season_code, season_label
+from plforecast.ingest.footballdata import (
+    CLOSING_ODDS_SETS,
+    FootballDataSource,
+    closing_odds_columns,
+    season_code,
+    season_label,
+)
 
 FIXTURE = Path(__file__).parent.parent / "fixtures" / "footballdata" / "E0_1516_sample.csv"
 TWO_DIGIT_YEAR_FIXTURE = (
@@ -35,23 +41,17 @@ def test_parse_selects_and_types_core_columns():
     df = FootballDataSource().parse(_payload(FIXTURE.read_bytes()))
 
     assert df.height == 5
-    assert set(df.columns) == {
-        "season",
-        "date",
-        "home_team",
-        "away_team",
-        "fthg",
-        "ftag",
-        "ftr",
-        "psch",
-        "pscd",
-        "psca",
-    }
+    assert {"season", "date", "home_team", "away_team", "fthg", "ftag", "ftr"} < set(df.columns)
+    for prefix in CLOSING_ODDS_SETS:
+        assert set(closing_odds_columns(prefix)) <= set(df.columns)
     assert df["season"].to_list() == ["2015/16"] * 5
     assert df["date"][0] == pl.Series(["2015-08-08"]).str.to_date().item()
     assert df["home_team"][0] == "Bournemouth"
     assert df["ftr"].is_in(["H", "D", "A"]).all()
     assert df["psch"].dtype == pl.Float64
+    # 2015/16 carries Pinnacle closing only; the later sets land as nulls.
+    assert df["psch"].null_count() == 0
+    assert df["avgch"].null_count() == 5
 
 
 def test_parse_rejects_bad_ftr(tmp_path):
@@ -80,13 +80,14 @@ def test_parse_handles_two_digit_year_dates():
     ]
 
 
-def test_parse_handles_missing_pinnacle_columns():
-    """The current in-progress season's file has dropped Pinnacle from its bookmaker set
-    entirely (PSCH/PSCD/PSCA absent, not just sparsely populated). This must land as
-    nulls, not crash the whole backfill."""
+def test_parse_lands_every_closing_set_the_file_carries_and_nulls_the_rest():
+    """The 2026/27 file dropped Pinnacle closing entirely but carries Bet365, Betfair
+    Exchange, Max and Avg closing prices. Absent sets land as nulls, never as a crash."""
     csv = (
-        "Div,Date,Time,HomeTeam,AwayTeam,FTHG,FTAG,FTR,PPH,PPD,PPA\n"
-        "E0,15/08/2026,20:00,Liverpool,Bournemouth,4,2,H,1.4,4.8,7.5\n"
+        "Div,Date,Time,HomeTeam,AwayTeam,FTHG,FTAG,FTR,B365CH,B365CD,B365CA,"
+        "MaxCH,MaxCD,MaxCA,AvgCH,AvgCD,AvgCA,BFECH,BFECD,BFECA\n"
+        "E0,15/08/2026,20:00,Liverpool,Bournemouth,4,2,H,1.4,4.8,7.5,1.45,5.0,8.0,"
+        "1.41,4.7,7.4,1.46,5.1,8.2\n"
     )
     payload = _payload(csv.encode(), label="2026/27")
 
@@ -94,5 +95,6 @@ def test_parse_handles_missing_pinnacle_columns():
 
     assert df.height == 1
     assert df["psch"].to_list() == [None]
-    assert df["pscd"].to_list() == [None]
-    assert df["psca"].to_list() == [None]
+    assert df["b365ch"].to_list() == [1.4]
+    assert df["avgca"].to_list() == [7.4]
+    assert df["bfech"].to_list() == [1.46]

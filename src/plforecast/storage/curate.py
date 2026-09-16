@@ -4,8 +4,15 @@ resolves club identity, and materialises stg_*/mart_* tables.
 - stg_club_season: which clubs were in the Premier League each season.
 - stg_matches: played match results (football-data.co.uk), club IDs resolved, one row
   per natural key.
+- stg_odds: one row per (match, bookmaker) closing 1X2 price, long shape, from every
+  closing-price set football-data.co.uk publishes for that season.
 - mart_fixtures: the full current-season fixture list (FPL), club IDs resolved. This is
   what the simulation engine reads remaining fixtures from.
+
+The market benchmark price on stg_matches (`benchmark_*_odds`, `benchmark_source`) is
+chosen per match by BENCHMARK_CHAIN: Pinnacle closing where the site still publishes
+it, then Betfair Exchange closing, then the site's average closing price. Design.md
+section 8.3 chose Pinnacle alone; the site dropped it mid-2025/26 (ADR 0007).
 
 Every raw source is a full-state snapshot: each ingest run lands the complete current
 view of that source, and the raw_* views union every snapshot ever landed. Curate
@@ -13,10 +20,8 @@ therefore always starts from the most recently landed snapshot of each view
 (`latest_snapshot_sql`), and stg_matches additionally dedupes on its natural key as a
 second guard.
 
-mart_matches (a model-ready superset of stg_matches, per design.md's repo layout) and
-mart_odds (a normalised, multi-bookmaker odds table) are deliberately not built yet --
-there is only one odds source landed so far, and stg_matches already carries it at
-match grain, which is enough until a second source makes a separate table worth it.
+mart_matches (a model-ready superset of stg_matches, per design.md's repo layout) is
+not built yet; stg_matches carries everything the two shipped models need.
 """
 
 from __future__ import annotations
@@ -30,8 +35,14 @@ from pandera.typing.polars import Series
 from plforecast.config import season_label, settings
 from plforecast.entities.clubs import ClubDimension, load_club_dimension
 from plforecast.entities.competitions import build_club_season_membership
+from plforecast.ingest.footballdata import CLOSING_ODDS_SETS, closing_odds_columns
 
 log = structlog.get_logger()
+
+
+# Order matters: the first set with a complete home/draw/away price for a match wins.
+BENCHMARK_CHAIN: tuple[str, ...] = ("pinnacle", "betfair_exchange", "market_avg")
+PRICE_TYPE_CLOSING = "closing"
 
 
 class StgMatchSchema(pa.DataFrameModel):
@@ -43,13 +54,79 @@ class StgMatchSchema(pa.DataFrameModel):
     home_goals: Series[int] = pa.Field(ge=0)
     away_goals: Series[int] = pa.Field(ge=0)
     result: Series[str] = pa.Field(isin=["H", "D", "A"])
-    pinnacle_home_odds: Series[float] = pa.Field(nullable=True, ge=1.0)
-    pinnacle_draw_odds: Series[float] = pa.Field(nullable=True, ge=1.0)
-    pinnacle_away_odds: Series[float] = pa.Field(nullable=True, ge=1.0)
+    benchmark_home_odds: Series[float] = pa.Field(nullable=True, ge=1.0)
+    benchmark_draw_odds: Series[float] = pa.Field(nullable=True, ge=1.0)
+    benchmark_away_odds: Series[float] = pa.Field(nullable=True, ge=1.0)
+    benchmark_source: Series[str] = pa.Field(nullable=True, isin=list(BENCHMARK_CHAIN))
 
     class Config:
         strict = True
         coerce = True
+
+
+class StgOddsSchema(pa.DataFrameModel):
+    match_id: Series[str]
+    bookmaker: Series[str] = pa.Field(isin=list(CLOSING_ODDS_SETS.values()))
+    price_type: Series[str] = pa.Field(isin=[PRICE_TYPE_CLOSING])
+    home_odds: Series[float] = pa.Field(ge=1.0)
+    draw_odds: Series[float] = pa.Field(ge=1.0)
+    away_odds: Series[float] = pa.Field(ge=1.0)
+
+    class Config:
+        strict = True
+        coerce = True
+
+
+def _bookmaker_columns() -> dict[str, tuple[str, str, str]]:
+    """bookmaker id -> (home, draw, away) parsed column names on the raw football-data frame."""
+    return {
+        bookmaker: closing_odds_columns(prefix) for prefix, bookmaker in CLOSING_ODDS_SETS.items()
+    }
+
+
+def _benchmark_exprs() -> list[pl.Expr]:
+    """benchmark_{home,draw,away}_odds and benchmark_source from the first set in
+    BENCHMARK_CHAIN with all three prices present for the row."""
+    columns = _bookmaker_columns()
+    complete = {
+        bookmaker: pl.all_horizontal([pl.col(c).is_not_null() for c in columns[bookmaker]])
+        for bookmaker in BENCHMARK_CHAIN
+    }
+
+    def chain(pick: dict[str, pl.Expr], dtype: pl.DataType) -> pl.Expr:
+        expr: pl.Expr = pl.lit(None, dtype=dtype)
+        for bookmaker in reversed(BENCHMARK_CHAIN):
+            expr = pl.when(complete[bookmaker]).then(pick[bookmaker]).otherwise(expr)
+        return expr
+
+    return [
+        chain({b: pl.col(columns[b][i]) for b in BENCHMARK_CHAIN}, pl.Float64()).alias(name)
+        for i, name in enumerate(
+            ("benchmark_home_odds", "benchmark_draw_odds", "benchmark_away_odds")
+        )
+    ] + [chain({b: pl.lit(b) for b in BENCHMARK_CHAIN}, pl.Utf8()).alias("benchmark_source")]
+
+
+def build_odds_long(matches_with_odds: pl.DataFrame) -> pl.DataFrame:
+    """`matches_with_odds` needs `match_id` plus the parsed closing-odds columns. One row
+    per (match, bookmaker) where all three prices are present."""
+    frames = []
+    for bookmaker, (h, d, a) in _bookmaker_columns().items():
+        frames.append(
+            matches_with_odds.select(
+                "match_id",
+                pl.lit(bookmaker).alias("bookmaker"),
+                pl.lit(PRICE_TYPE_CLOSING).alias("price_type"),
+                pl.col(h).cast(pl.Float64).alias("home_odds"),
+                pl.col(d).cast(pl.Float64).alias("draw_odds"),
+                pl.col(a).cast(pl.Float64).alias("away_odds"),
+            ).drop_nulls(["home_odds", "draw_odds", "away_odds"])
+        )
+    odds = pl.concat(frames).sort("match_id", "bookmaker")
+    dupes = odds.filter(odds.select("match_id", "bookmaker").is_duplicated())
+    if dupes.height:
+        raise ValueError(f"stg_odds has duplicate (match_id, bookmaker) rows: {dupes}")
+    return StgOddsSchema.validate(odds)
 
 
 def _assert_no_self_fixtures(df: pl.DataFrame) -> None:
@@ -125,33 +202,39 @@ def curate_matches(conn: duckdb.DuckDBPyConnection, dimension: ClubDimension | N
     the latest snapshot, then keeps the most recently landed row per natural key as a
     second guard, so the table is one row per match however many snapshots exist."""
     dimension = dimension or load_club_dimension()
-    deduped = conn.execute(
-        f"""
-        SELECT season, date, home_team, away_team, fthg, ftag, ftr, psch, pscd, psca
-        FROM (
-            SELECT *, row_number() OVER (
-                PARTITION BY season, home_team, away_team ORDER BY filename DESC
-            ) AS rn
-            FROM ({latest_snapshot_sql("raw_footballdata_matches")})
+    odds_cols = ", ".join(c for cols in _bookmaker_columns().values() for c in cols)
+    # The natural-key dedupe runs in Polars, not as a SQL window: DuckDB 1.5 returns nulls
+    # for union_by_name columns that only the newer snapshot has when a row_number()
+    # window sits on top of the filename filter.
+    deduped = (
+        conn.execute(
+            f"SELECT season, date, home_team, away_team, fthg, ftag, ftr, {odds_cols}, filename "
+            f"FROM ({latest_snapshot_sql('raw_footballdata_matches')})"
         )
-        WHERE rn = 1
-        """
-    ).pl()
+        .pl()
+        .sort("filename", descending=True)
+        .unique(subset=["season", "home_team", "away_team"], keep="first", maintain_order=True)
+        .drop("filename")
+        .sort("date", "home_team")
+    )
 
     home_club_ids = dimension.resolve(deduped["home_team"].to_list(), "football_data")
     away_club_ids = dimension.resolve(deduped["away_team"].to_list(), "football_data")
 
-    curated = deduped.with_columns(
+    resolved = deduped.with_columns(
         pl.Series("home_club_id", home_club_ids),
         pl.Series("away_club_id", away_club_ids),
-    ).select(
         (
             pl.col("season").str.replace("/", "-")
             + "-"
-            + pl.col("home_club_id")
+            + pl.Series("home_club_id", home_club_ids)
             + "-"
-            + pl.col("away_club_id")
+            + pl.Series("away_club_id", away_club_ids)
         ).alias("match_id"),
+    )
+
+    curated = resolved.select(
+        "match_id",
         "season",
         "date",
         "home_club_id",
@@ -159,17 +242,19 @@ def curate_matches(conn: duckdb.DuckDBPyConnection, dimension: ClubDimension | N
         pl.col("fthg").alias("home_goals"),
         pl.col("ftag").alias("away_goals"),
         pl.col("ftr").alias("result"),
-        pl.col("psch").alias("pinnacle_home_odds"),
-        pl.col("pscd").alias("pinnacle_draw_odds"),
-        pl.col("psca").alias("pinnacle_away_odds"),
+        *_benchmark_exprs(),
     )
 
     _assert_no_self_fixtures(curated)
     _assert_result_matches_score(curated)
     validated = StgMatchSchema.validate(curated)
+    odds = build_odds_long(resolved)
 
     _materialize(conn, "stg_matches", validated)
-    log.info("curate.matches", rows=validated.height)
+    _materialize(conn, "stg_odds", odds)
+    coverage = validated.group_by("benchmark_source").len().sort("benchmark_source").to_dicts()
+    log.info("curate.matches", rows=validated.height, benchmark_coverage=coverage)
+    log.info("curate.odds", rows=odds.height)
 
 
 def curate_fixtures(

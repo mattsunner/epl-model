@@ -5,8 +5,22 @@ ingestion contract every adapter implements.
 
 ## football-data.co.uk
 
-- **Responsibility**: match results and Pinnacle closing odds (`PSCH`/`PSCD`/`PSCA`), E0
-  (Premier League) division.
+- **Responsibility**: match results and closing 1X2 odds, E0 (Premier League) division.
+  The market benchmark (design.md section 8.3, ADR 0007) is built from a fallback chain of
+  closing prices, because the site's closing-price columns change by season:
+
+  | Seasons | Closing-price sets in the file |
+  | --- | --- |
+  | 2015/16 to 2018/19 | Pinnacle (`PSC*`) only |
+  | 2019/20 to 2023/24 | Pinnacle, Bet365 (`B365C*`), Max (`MaxC*`), Avg (`AvgC*`) |
+  | 2024/25 | the above plus Betfair Exchange (`BFEC*`) |
+  | 2025/26 | the above; Pinnacle null from 17 January 2026 (170 matches) |
+  | 2026/27 | Bet365, Max, Avg, Betfair Exchange; Pinnacle columns absent |
+
+  The adapter lands all five sets (nulls where absent); curate stores them long in
+  `stg_odds` and picks `benchmark_*` per match as Pinnacle, then Betfair Exchange, then
+  Avg. Coverage by source is logged by `just curate` and reported in
+  `docs/evaluation.md`.
 - **Access**: one CSV per season at
   `https://www.football-data.co.uk/mmz4281/{season_code}/E0.csv`, where `season_code` is
   the two two-digit season-start/end years, e.g. `1516` for 2015/16. No auth, no rate
@@ -14,11 +28,12 @@ ingestion contract every adapter implements.
 - **Coverage used**: 2015/16 onward, matching the backtest window in design.md section
   8.2 (Understat xG does not exist before 2014/15). Full history back to 1993 is
   available at the source if the backtest window is ever extended earlier.
-- **Column drift**: the core columns used here (date, teams, full-time score, closing
-  odds) are stable across seasons. The wider bookmaker-odds column set is not -- it
-  changes shape every season as individual bookmakers stop or start reporting to the
-  site. The adapter selects only the stable core at parse time rather than carrying the
-  full raw column set into `data/raw/`.
+- **Column drift**: the core columns used here (date, teams, full-time score) are stable
+  across seasons. The bookmaker-odds column set is not -- it changes shape every season as
+  individual bookmakers stop or start reporting to the site, and that includes the
+  closing prices (see the table above). The adapter selects the core plus the five
+  closing-price sets at parse time rather than carrying the full raw column set into
+  `data/raw/`.
 - **Unplayed fixtures**: the season CSV only contains played matches. Remaining-fixture
   data (for the simulation engine) comes from the FPL API, not this source.
 - **License / attribution**: free for personal/non-commercial use per the site's terms;

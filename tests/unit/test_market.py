@@ -10,7 +10,7 @@ def _matches(rows: list[dict]) -> pl.DataFrame:
 
 def test_market_probabilities_sums_to_one_and_removes_the_margin():
     matches = _matches(
-        [{"pinnacle_home_odds": 2.0, "pinnacle_draw_odds": 3.5, "pinnacle_away_odds": 4.0}]
+        [{"benchmark_home_odds": 2.0, "benchmark_draw_odds": 3.5, "benchmark_away_odds": 4.0}]
     )
 
     result = market_probabilities(matches, method="shin")
@@ -25,8 +25,8 @@ def test_market_probabilities_sums_to_one_and_removes_the_margin():
 def test_market_probabilities_drops_rows_with_missing_odds():
     matches = _matches(
         [
-            {"pinnacle_home_odds": 2.0, "pinnacle_draw_odds": 3.5, "pinnacle_away_odds": 4.0},
-            {"pinnacle_home_odds": None, "pinnacle_draw_odds": 3.5, "pinnacle_away_odds": 4.0},
+            {"benchmark_home_odds": 2.0, "benchmark_draw_odds": 3.5, "benchmark_away_odds": 4.0},
+            {"benchmark_home_odds": None, "benchmark_draw_odds": 3.5, "benchmark_away_odds": 4.0},
         ]
     )
 
@@ -37,7 +37,7 @@ def test_market_probabilities_drops_rows_with_missing_odds():
 
 def test_market_probabilities_empty_when_all_odds_missing():
     matches = _matches(
-        [{"pinnacle_home_odds": None, "pinnacle_draw_odds": None, "pinnacle_away_odds": None}]
+        [{"benchmark_home_odds": None, "benchmark_draw_odds": None, "benchmark_away_odds": None}]
     )
 
     result = market_probabilities(matches)
@@ -48,7 +48,7 @@ def test_market_probabilities_empty_when_all_odds_missing():
 
 def test_market_probabilities_shin_and_multiplicative_both_sum_to_one_but_differ():
     matches = _matches(
-        [{"pinnacle_home_odds": 1.5, "pinnacle_draw_odds": 4.0, "pinnacle_away_odds": 7.0}]
+        [{"benchmark_home_odds": 1.5, "benchmark_draw_odds": 4.0, "benchmark_away_odds": 7.0}]
     )
 
     shin = market_probabilities(matches, method="shin")

@@ -1,11 +1,13 @@
-"""football-data.co.uk adapter: E0 (Premier League) match results and Pinnacle closing odds.
+"""football-data.co.uk adapter: E0 (Premier League) match results and closing odds.
 
-Only the columns the pipeline actually depends on are kept at parse time (see
-docs/data-sources.md): match identity, final score, and PSCH/PSCD/PSCA. The full
-bookmaker-odds column set is dropped deliberately -- it changes shape every season as
-bookmakers stop or start reporting, so concatenating raw files across seasons on the
-full column set is not viable. That drift is exactly what schema validation below
-guards against for the columns that do matter.
+Only the columns the pipeline depends on are kept at parse time (see
+docs/data-sources.md): match identity, final score, and every *closing* 1X2 price the
+site publishes that the market benchmark can fall back to. The wider bookmaker column
+set is dropped deliberately -- it changes shape every season as bookmakers stop or start
+reporting, so concatenating raw files across seasons on the full column set is not
+viable. Closing prices are themselves subject to that drift (Pinnacle closing vanished
+from the 2026/27 file), which is why several sets are landed and a fallback chain is
+applied at curate time (design.md section 8.3, ADR 0007).
 """
 
 from __future__ import annotations
@@ -24,6 +26,25 @@ from plforecast.ingest.base import RawPayload, cached_get, write_snapshot
 log = structlog.get_logger()
 
 
+# Closing 1X2 price sets landed from the site, keyed by the site's column prefix. The
+# parsed column names are the site's own names lowercased (PSCH -> psch), so a row can
+# always be traced back to the source column. Coverage differs by season: only PSC*
+# exists before 2019/20; B365C*, MaxC*, AvgC* appear from 2019/20; BFEC* (Betfair
+# Exchange) from 2024/25; PSC* is absent from 2026/27. See docs/data-sources.md.
+CLOSING_ODDS_SETS: dict[str, str] = {
+    "PSC": "pinnacle",
+    "BFEC": "betfair_exchange",
+    "B365C": "bet365",
+    "MaxC": "market_max",
+    "AvgC": "market_avg",
+}
+
+
+def closing_odds_columns(prefix: str) -> tuple[str, str, str]:
+    """('psch', 'pscd', 'psca') for prefix 'PSC': the parsed home/draw/away column names."""
+    return tuple(f"{prefix}{suffix}".lower() for suffix in ("H", "D", "A"))  # type: ignore[return-value]
+
+
 class MatchSchema(pa.DataFrameModel):
     season: Series[str] = pa.Field(str_matches=r"^\d{4}/\d{2}$")
     date: Series[pl.Date]
@@ -32,14 +53,41 @@ class MatchSchema(pa.DataFrameModel):
     fthg: Series[int] = pa.Field(ge=0)
     ftag: Series[int] = pa.Field(ge=0)
     ftr: Series[str] = pa.Field(isin=["H", "D", "A"])
-    # Closing odds are occasionally missing for early-season or thinly-covered fixtures.
+    # Every closing price is nullable: a set can be missing for a season (column absent)
+    # or for individual thinly-covered fixtures (cell empty).
     psch: Series[float] = pa.Field(nullable=True, ge=1.0)
     pscd: Series[float] = pa.Field(nullable=True, ge=1.0)
     psca: Series[float] = pa.Field(nullable=True, ge=1.0)
+    bfech: Series[float] = pa.Field(nullable=True, ge=1.0)
+    bfecd: Series[float] = pa.Field(nullable=True, ge=1.0)
+    bfeca: Series[float] = pa.Field(nullable=True, ge=1.0)
+    b365ch: Series[float] = pa.Field(nullable=True, ge=1.0)
+    b365cd: Series[float] = pa.Field(nullable=True, ge=1.0)
+    b365ca: Series[float] = pa.Field(nullable=True, ge=1.0)
+    maxch: Series[float] = pa.Field(nullable=True, ge=1.0)
+    maxcd: Series[float] = pa.Field(nullable=True, ge=1.0)
+    maxca: Series[float] = pa.Field(nullable=True, ge=1.0)
+    avgch: Series[float] = pa.Field(nullable=True, ge=1.0)
+    avgcd: Series[float] = pa.Field(nullable=True, ge=1.0)
+    avgca: Series[float] = pa.Field(nullable=True, ge=1.0)
 
     class Config:
         strict = True
         coerce = True
+
+
+def _closing_odds_exprs(present: set[str]) -> list[pl.Expr]:
+    """One Float64 expression per closing-odds column: the parsed source column for
+    sets in `present`, a null literal for the rest."""
+    exprs = []
+    for prefix in CLOSING_ODDS_SETS:
+        for suffix, alias in zip(("H", "D", "A"), closing_odds_columns(prefix), strict=True):
+            exprs.append(
+                pl.col(f"{prefix}{suffix}").cast(pl.Float64, strict=False).alias(alias)
+                if prefix in present
+                else pl.lit(None, dtype=pl.Float64).alias(alias)
+            )
+    return exprs
 
 
 class FootballDataSource:
@@ -83,20 +131,25 @@ class FootballDataSource:
         for part in payload.parts:
             raw = pl.read_csv(part.content, encoding="utf8-lossy", infer_schema_length=0)
 
-            # Pinnacle closing odds (PSCH/PSCD/PSCA) are not guaranteed to exist in every
-            # season's file -- the site's bookmaker column set changes as individual books
-            # stop or start reporting. Missing entirely is a stronger case of the same
-            # "occasionally missing" nullability already modelled in MatchSchema, not an
-            # error: surface it loudly via a log so it doesn't pass unnoticed, since the
-            # market baseline in design.md section 8.3 depends on this price source.
-            odds_cols = {"PSCH": "psch", "PSCD": "pscd", "PSCA": "psca"}
-            missing = [c for c in odds_cols if c not in raw.columns]
+            # Which closing-price sets this season's file carries. Missing sets land as
+            # nulls, not errors: the market benchmark (design.md section 8.3) falls back
+            # across sets at curate time, but a season with *no* closing prices at all
+            # would leave the benchmark empty, so that case is logged loudly.
+            present = {
+                prefix
+                for prefix in CLOSING_ODDS_SETS
+                if all(f"{prefix}{suffix}" in raw.columns for suffix in ("H", "D", "A"))
+            }
+            missing = sorted(set(CLOSING_ODDS_SETS) - present)
             if missing:
-                log.warning(
-                    "footballdata.pinnacle_closing_odds_missing",
+                log.info(
+                    "footballdata.closing_odds_sets_missing",
                     season=part.label,
-                    missing_columns=missing,
+                    missing=missing,
+                    present=sorted(present),
                 )
+            if not present:
+                log.warning("footballdata.no_closing_odds_at_all", season=part.label)
 
             frame = raw.select(
                 pl.lit(part.label).alias("season"),
@@ -114,14 +167,7 @@ class FootballDataSource:
                 pl.col("FTHG").cast(pl.Int64).alias("fthg"),
                 pl.col("FTAG").cast(pl.Int64).alias("ftag"),
                 pl.col("FTR").alias("ftr"),
-                *(
-                    (
-                        pl.col(raw_col).cast(pl.Float64, strict=False).alias(alias)
-                        if raw_col in raw.columns
-                        else pl.lit(None, dtype=pl.Float64).alias(alias)
-                    )
-                    for raw_col, alias in odds_cols.items()
-                ),
+                *_closing_odds_exprs(present),
             )
             frames.append(frame)
 

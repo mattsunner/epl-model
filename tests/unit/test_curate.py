@@ -9,6 +9,8 @@ import pytest
 
 from plforecast.entities.clubs import load_club_dimension
 from plforecast.storage.curate import (
+    build_team_match,
+    curate_club_dimension,
     curate_fixtures,
     curate_matches,
     reconcile_current_season,
@@ -255,7 +257,7 @@ def test_curate_fixtures_uses_only_the_latest_snapshot(conn, dimension):
     )
 
     curate_fixtures(conn, dimension)
-    result = conn.execute("SELECT * FROM mart_fixtures").pl()
+    result = conn.execute("SELECT * FROM stg_fixtures").pl()
 
     assert result.height == 1
     assert result["finished"].item() is True
@@ -280,7 +282,7 @@ def test_curate_fixtures_resolves_club_ids_and_stamps_season(conn, dimension):
     )
 
     curate_fixtures(conn, dimension)
-    result = conn.execute("SELECT * FROM mart_fixtures ORDER BY fixture_id").pl()
+    result = conn.execute("SELECT * FROM stg_fixtures ORDER BY fixture_id").pl()
 
     assert result.height == 2
     played = result.row(0, named=True)
@@ -323,7 +325,7 @@ def _seed_reconciliation_scenario(conn, dimension, *, fd_home_goals: int) -> Non
     curate_matches(conn, dimension)
     curate_fixtures(conn, dimension)
     conn.execute(
-        "UPDATE mart_fixtures SET season = ?", [season]
+        "UPDATE stg_fixtures SET season = ?", [season]
     )  # curate stamps season from the wall clock (story B-10); pin it for the test
 
 
@@ -340,3 +342,152 @@ def test_reconcile_current_season_fails_on_scoreline_disagreement(conn, dimensio
 
     with pytest.raises(ValueError, match="disagree on scorelines"):
         reconcile_current_season(conn)
+
+
+def _seed_raw_understat(conn: duckdb.DuckDBPyConnection, rows: list[dict]) -> None:
+    df = pl.DataFrame(rows)
+    conn.register("_seed_us", df.to_arrow())
+    conn.execute("CREATE TABLE raw_understat_team_match AS SELECT * FROM _seed_us")
+    conn.unregister("_seed_us")
+
+
+def _understat_row(**overrides) -> dict:
+    row = {
+        "season": "2015/16",
+        "date": date(2015, 8, 8),
+        "home_team": "Arsenal",
+        "away_team": "Chelsea",
+        "home_goals": 2,
+        "away_goals": 1,
+        "home_xg": 1.9,
+        "away_xg": 0.7,
+        "home_np_xg": 1.1,
+        "away_np_xg": 0.7,
+        "home_ppda": 9.0,
+        "away_ppda": 12.0,
+        "filename": "data/raw/understat/20260101T000000Z/data.parquet",
+    }
+    row.update(overrides)
+    return row
+
+
+def test_curate_matches_joins_understat_xg_by_resolved_key(conn, dimension):
+    _seed_raw_footballdata_matches(conn, [_base_match_row()])
+    _seed_raw_understat(conn, [_understat_row()])
+
+    curate_matches(conn, dimension)
+    row = conn.execute("SELECT * FROM stg_matches").pl().row(0, named=True)
+
+    assert row["home_xg"] == pytest.approx(1.9)
+    assert row["away_np_xg"] == pytest.approx(0.7)
+
+
+def test_curate_matches_fails_when_understat_scoreline_disagrees(conn, dimension):
+    _seed_raw_footballdata_matches(conn, [_base_match_row()])
+    _seed_raw_understat(conn, [_understat_row(home_goals=3)])
+
+    with pytest.raises(ValueError, match="disagree on scorelines"):
+        curate_matches(conn, dimension)
+
+
+def test_curate_matches_fails_when_a_completed_season_match_lacks_xg(conn, dimension):
+    _seed_raw_footballdata_matches(
+        conn,
+        [
+            _base_match_row(),
+            _base_match_row(season="2016/17", date=date(2016, 8, 13)),  # newest season
+        ],
+    )
+    _seed_raw_understat(conn, [_understat_row(season="2016/17", date=date(2016, 8, 13))])
+
+    with pytest.raises(ValueError, match="completed-season matches have no Understat xG"):
+        curate_matches(conn, dimension)
+
+
+def test_curate_matches_tolerates_missing_xg_only_in_the_current_season(conn, dimension):
+    _seed_raw_footballdata_matches(
+        conn,
+        [_base_match_row(), _base_match_row(season="2016/17", date=date(2016, 8, 13))],
+    )
+    _seed_raw_understat(conn, [_understat_row()])  # nothing yet for 2016/17
+
+    curate_matches(conn, dimension)
+    result = conn.execute("SELECT season, home_xg FROM stg_matches ORDER BY season").pl()
+
+    assert result["home_xg"].to_list()[0] == pytest.approx(1.9)
+    assert result["home_xg"].to_list()[1] is None
+
+
+def test_curate_matches_without_understat_snapshot_leaves_xg_null(conn, dimension):
+    _seed_raw_footballdata_matches(conn, [_base_match_row()])
+
+    curate_matches(conn, dimension)
+
+    assert conn.execute("SELECT home_xg FROM stg_matches").fetchone()[0] is None
+
+
+def test_curate_club_dimension_materialises_dim_club(conn, dimension):
+    curate_club_dimension(conn, dimension)
+    rows = conn.execute("SELECT club_id, fpl_code FROM dim_club ORDER BY club_id").fetchall()
+    assert rows == [("arsenal", 1), ("chelsea", 2), ("leeds", 3), ("watford", None)]
+
+
+def test_build_team_match_has_two_rows_per_match_with_rest_days():
+    matches = pl.DataFrame(
+        [
+            {
+                "match_id": "2015-16-arsenal-chelsea",
+                "season": "2015/16",
+                "date": date(2015, 8, 8),
+                "home_club_id": "arsenal",
+                "away_club_id": "chelsea",
+                "home_goals": 2,
+                "away_goals": 1,
+                "home_xg": 1.9,
+                "away_xg": 0.7,
+                "home_np_xg": 1.1,
+                "away_np_xg": 0.7,
+            },
+            {
+                "match_id": "2015-16-chelsea-arsenal",
+                "season": "2015/16",
+                "date": date(2015, 8, 15),
+                "home_club_id": "chelsea",
+                "away_club_id": "arsenal",
+                "home_goals": 0,
+                "away_goals": 0,
+                "home_xg": 1.0,
+                "away_xg": 1.2,
+                "home_np_xg": 1.0,
+                "away_np_xg": 1.2,
+            },
+        ]
+    )
+
+    team_match = build_team_match(matches)
+
+    assert team_match.height == 4
+    arsenal = team_match.filter(pl.col("club_id") == "arsenal").sort("date")
+    assert arsenal["points"].to_list() == [3, 1]
+    assert arsenal["result"].to_list() == ["W", "D"]
+    assert arsenal["rest_days"].to_list() == [None, 7]
+    assert arsenal["xg_for"].to_list() == pytest.approx([1.9, 1.2])
+    assert arsenal["is_home"].to_list() == [True, False]
+
+
+def test_curate_matches_joins_xg_across_a_one_day_timestamp_gap(conn, dimension):
+    """Understat dates Monday-night matches in 2015/16 and 2016/17 on the next day."""
+    _seed_raw_footballdata_matches(conn, [_base_match_row()])
+    _seed_raw_understat(conn, [_understat_row(date=date(2015, 8, 9))])
+
+    curate_matches(conn, dimension)
+
+    assert conn.execute("SELECT home_xg FROM stg_matches").fetchone()[0] == pytest.approx(1.9)
+
+
+def test_curate_matches_rejects_xg_with_a_large_date_gap(conn, dimension):
+    _seed_raw_footballdata_matches(conn, [_base_match_row()])
+    _seed_raw_understat(conn, [_understat_row(date=date(2015, 9, 1))])
+
+    with pytest.raises(ValueError, match="differ from football-data by more than a day"):
+        curate_matches(conn, dimension)

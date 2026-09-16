@@ -5,7 +5,7 @@ refreshed after each gameweek and evaluated against the market. See `design.md` 
 the full architecture and rationale.
 
 **Status**: early, but end to end. Ingest (football-data.co.uk, FPL, Understat), club
-identity resolution, curation into `stg_matches`/`stg_odds`/`mart_fixtures`, the first
+identity resolution, curation into `stg_matches` (with xG and a benchmark price), `stg_odds`, `stg_fixtures` and `mart_team_match`, the first
 two rungs of the model ladder (`models/poisson.py`, `models/dixon_coles.py`), the season
 simulation engine (`simulate/`), the evaluation harness (`evaluate/`), a promoted-club
 prior (`features/priors.py`) and the forecast artifact (`artifacts/`) are built and run

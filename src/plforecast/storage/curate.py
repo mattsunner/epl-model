@@ -1,18 +1,16 @@
-"""Raw -> curated transforms (design.md section 5.4). Reads from the raw_* views,
-resolves club identity, and materialises stg_*/mart_* tables.
+"""Raw -> curated transforms (design.md section 5.4, ADR 0002). Reads from the raw_*
+views, resolves club identity, and materialises the curated tables.
 
+Zones (story B-09):
+- dim_club: the club dimension from club_aliases.yaml, so SQL can join to names.
 - stg_club_season: which clubs were in the Premier League each season.
-- stg_matches: played match results (football-data.co.uk), club IDs resolved, one row
-  per natural key.
-- stg_odds: one row per (match, bookmaker) closing 1X2 price, long shape, from every
-  closing-price set football-data.co.uk publishes for that season.
-- mart_fixtures: the full current-season fixture list (FPL), club IDs resolved. This is
-  what the simulation engine reads remaining fixtures from.
-
-The market benchmark price on stg_matches (`benchmark_*_odds`, `benchmark_source`) is
-chosen per match by BENCHMARK_CHAIN: Pinnacle closing where the site still publishes
-it, then Betfair Exchange closing, then the site's average closing price. Design.md
-section 8.3 chose Pinnacle alone; the site dropped it mid-2025/26 (ADR 0007).
+- stg_matches: played match results (football-data.co.uk) with Understat xG joined,
+  club IDs resolved, one row per natural key, benchmark closing price chosen.
+- stg_odds: one row per (match, bookmaker) closing 1X2 price, long shape.
+- stg_fixtures: the full current-season fixture list (FPL), club IDs resolved. What
+  the simulation engine reads remaining fixtures from.
+- mart_team_match: one row per club per match (the feature grain), with goals, xG,
+  points and league rest days for and against.
 
 Every raw source is a full-state snapshot: each ingest run lands the complete current
 view of that source, and the raw_* views union every snapshot ever landed. Curate
@@ -20,8 +18,9 @@ therefore always starts from the most recently landed snapshot of each view
 (`latest_snapshot_sql`), and stg_matches additionally dedupes on its natural key as a
 second guard.
 
-mart_matches (a model-ready superset of stg_matches, per design.md's repo layout) is
-not built yet; stg_matches carries everything the two shipped models need.
+The market benchmark price on stg_matches (`benchmark_*_odds`, `benchmark_source`) is
+chosen per match by BENCHMARK_CHAIN: Pinnacle closing where the site still publishes
+it, then Betfair Exchange closing, then the site's average closing price (ADR 0007).
 """
 
 from __future__ import annotations
@@ -54,6 +53,12 @@ class StgMatchSchema(pa.DataFrameModel):
     home_goals: Series[int] = pa.Field(ge=0)
     away_goals: Series[int] = pa.Field(ge=0)
     result: Series[str] = pa.Field(isin=["H", "D", "A"])
+    # Nullable only for the in-progress season, where Understat can lag a result by a
+    # day; curate raises if any completed-season match lacks xG.
+    home_xg: Series[float] = pa.Field(nullable=True, ge=0)
+    away_xg: Series[float] = pa.Field(nullable=True, ge=0)
+    home_np_xg: Series[float] = pa.Field(nullable=True, ge=0)
+    away_np_xg: Series[float] = pa.Field(nullable=True, ge=0)
     benchmark_home_odds: Series[float] = pa.Field(nullable=True, ge=1.0)
     benchmark_draw_odds: Series[float] = pa.Field(nullable=True, ge=1.0)
     benchmark_away_odds: Series[float] = pa.Field(nullable=True, ge=1.0)
@@ -168,7 +173,7 @@ def _materialize(conn: duckdb.DuckDBPyConnection, table: str, df: pl.DataFrame) 
     conn.unregister(staging_name)
 
 
-class MartFixtureSchema(pa.DataFrameModel):
+class StgFixtureSchema(pa.DataFrameModel):
     fixture_id: Series[int] = pa.Field(ge=1, unique=True)
     season: Series[str] = pa.Field(str_matches=r"^\d{4}/\d{2}$")
     gameweek: Series[int] = pa.Field(ge=1, nullable=True)
@@ -182,6 +187,210 @@ class MartFixtureSchema(pa.DataFrameModel):
     class Config:
         strict = True
         coerce = True
+
+
+class DimClubSchema(pa.DataFrameModel):
+    club_id: Series[str] = pa.Field(unique=True)
+    display_name: Series[str]
+    football_data_name: Series[str] = pa.Field(nullable=True)
+    fpl_code: Series[int] = pa.Field(nullable=True)
+    clubelo_name: Series[str] = pa.Field(nullable=True)
+    understat_name: Series[str] = pa.Field(nullable=True)
+    transfermarkt_id: Series[int] = pa.Field(nullable=True)
+
+    class Config:
+        strict = True
+        coerce = True
+
+
+class MartTeamMatchSchema(pa.DataFrameModel):
+    match_id: Series[str]
+    season: Series[str] = pa.Field(str_matches=r"^\d{4}/\d{2}$")
+    date: Series[pl.Date]
+    club_id: Series[str]
+    opponent_id: Series[str]
+    is_home: Series[bool]
+    goals_for: Series[int] = pa.Field(ge=0)
+    goals_against: Series[int] = pa.Field(ge=0)
+    xg_for: Series[float] = pa.Field(nullable=True, ge=0)
+    xg_against: Series[float] = pa.Field(nullable=True, ge=0)
+    npxg_for: Series[float] = pa.Field(nullable=True, ge=0)
+    npxg_against: Series[float] = pa.Field(nullable=True, ge=0)
+    result: Series[str] = pa.Field(isin=["W", "D", "L"])
+    points: Series[int] = pa.Field(isin=[0, 1, 3])
+    # Days since the club's previous *league* match this season; null for its first.
+    # Cup and European fixtures are not in stg_matches, so this understates congestion.
+    rest_days: Series[int] = pa.Field(nullable=True, ge=0)
+
+    class Config:
+        strict = True
+        coerce = True
+
+
+def curate_club_dimension(conn: duckdb.DuckDBPyConnection, dimension: ClubDimension) -> None:
+    frame = dimension.frame.select(
+        "club_id",
+        "display_name",
+        "football_data_name",
+        pl.col("fpl_code").cast(pl.Int64),
+        pl.col("clubelo_name").cast(pl.Utf8),
+        pl.col("understat_name").cast(pl.Utf8),
+        pl.col("transfermarkt_id").cast(pl.Int64),
+    )
+    validated = DimClubSchema.validate(frame)
+    _materialize(conn, "dim_club", validated)
+    log.info("curate.club_dimension", rows=validated.height)
+
+
+def _has_relation(conn: duckdb.DuckDBPyConnection, name: str) -> bool:
+    row = conn.execute(
+        "SELECT count(*) FROM information_schema.tables WHERE table_name = ?", [name]
+    ).fetchone()
+    return bool(row and row[0])
+
+
+def _understat_xg(conn: duckdb.DuckDBPyConnection, dimension: ClubDimension) -> pl.DataFrame | None:
+    """Latest Understat snapshot with club IDs resolved, keyed like stg_matches.
+    None when Understat has not been ingested (a clean clone mid-bootstrap)."""
+    if not _has_relation(conn, "raw_understat_team_match"):
+        log.warning("curate.xg_skipped_no_understat_snapshot")
+        return None
+    raw = conn.execute(
+        "SELECT season, date, home_team, away_team, home_goals, away_goals, home_xg, "
+        "away_xg, home_np_xg, away_np_xg "
+        f"FROM ({latest_snapshot_sql('raw_understat_team_match')})"
+    ).pl()
+    return raw.with_columns(
+        pl.Series("home_club_id", dimension.resolve(raw["home_team"].to_list(), "understat")),
+        pl.Series("away_club_id", dimension.resolve(raw["away_team"].to_list(), "understat")),
+    ).drop("home_team", "away_team")
+
+
+def _join_xg(matches: pl.DataFrame, xg: pl.DataFrame | None) -> pl.DataFrame:
+    """Left-join Understat xG onto stg_matches rows by (season, home, away): each pairing
+    plays at a given ground once per season, so that is the natural key. Date is *not*
+    part of the key: Understat's timestamps for 2015/16 and 2016/17 Monday-night matches
+    fall on the next calendar day. Instead the date gap is checked (a gap over one day
+    means the join hit the wrong fixture). Goals must agree where both sources have the
+    match; every completed-season match must have xG; the in-progress season may lag
+    (warned, not failed)."""
+    if xg is None:
+        return matches.with_columns(
+            pl.lit(None, dtype=pl.Float64).alias(c)
+            for c in ("home_xg", "away_xg", "home_np_xg", "away_np_xg")
+        )
+    key = ["season", "home_club_id", "away_club_id"]
+    joined = matches.join(
+        xg.rename(
+            {"home_goals": "us_home_goals", "away_goals": "us_away_goals", "date": "us_date"}
+        ),
+        on=key,
+        how="left",
+    )
+    date_gap = joined.filter(
+        pl.col("us_date").is_not_null()
+        & ((pl.col("us_date") - pl.col("date")).dt.total_days().abs() > 1)
+    )
+    if date_gap.height:
+        raise ValueError(
+            f"Understat match dates differ from football-data by more than a day: {date_gap}"
+        )
+    disagree = joined.filter(
+        pl.col("us_home_goals").is_not_null()
+        & (
+            (pl.col("us_home_goals") != pl.col("home_goals"))
+            | (pl.col("us_away_goals") != pl.col("away_goals"))
+        )
+    )
+    if disagree.height:
+        raise ValueError(f"Understat and football-data disagree on scorelines: {disagree}")
+
+    current_season = matches["season"].max()
+    missing = joined.filter(pl.col("home_xg").is_null())
+    missing_completed = missing.filter(pl.col("season") != current_season)
+    if missing_completed.height:
+        raise ValueError(
+            f"{missing_completed.height} completed-season matches have no Understat xG: "
+            f"{missing_completed.select(key)}"
+        )
+    if missing.height:
+        log.warning("curate.xg_missing_current_season", count=missing.height)
+    unmatched_xg = xg.join(matches.select(key), on=key, how="anti")
+    if unmatched_xg.height:
+        log.warning("curate.xg_rows_without_match", count=unmatched_xg.height)
+    return joined.drop("us_home_goals", "us_away_goals", "us_date")
+
+
+def build_team_match(matches: pl.DataFrame) -> pl.DataFrame:
+    """One row per club per match from a stg_matches-shaped frame, with league rest
+    days (days since the club's previous match in the same season, null for the first)."""
+    home = matches.select(
+        "match_id",
+        "season",
+        "date",
+        pl.col("home_club_id").alias("club_id"),
+        pl.col("away_club_id").alias("opponent_id"),
+        pl.lit(True).alias("is_home"),
+        pl.col("home_goals").alias("goals_for"),
+        pl.col("away_goals").alias("goals_against"),
+        pl.col("home_xg").alias("xg_for"),
+        pl.col("away_xg").alias("xg_against"),
+        pl.col("home_np_xg").alias("npxg_for"),
+        pl.col("away_np_xg").alias("npxg_against"),
+    )
+    away = matches.select(
+        "match_id",
+        "season",
+        "date",
+        pl.col("away_club_id").alias("club_id"),
+        pl.col("home_club_id").alias("opponent_id"),
+        pl.lit(False).alias("is_home"),
+        pl.col("away_goals").alias("goals_for"),
+        pl.col("home_goals").alias("goals_against"),
+        pl.col("away_xg").alias("xg_for"),
+        pl.col("home_xg").alias("xg_against"),
+        pl.col("away_np_xg").alias("npxg_for"),
+        pl.col("home_np_xg").alias("npxg_against"),
+    )
+    team_match = (
+        pl.concat([home, away])
+        .with_columns(
+            pl.when(pl.col("goals_for") > pl.col("goals_against"))
+            .then(pl.lit("W"))
+            .when(pl.col("goals_for") < pl.col("goals_against"))
+            .then(pl.lit("L"))
+            .otherwise(pl.lit("D"))
+            .alias("result")
+        )
+        .with_columns(
+            pl.when(pl.col("result") == "W")
+            .then(3)
+            .when(pl.col("result") == "D")
+            .then(1)
+            .otherwise(0)
+            .cast(pl.Int64)
+            .alias("points")
+        )
+        .sort("club_id", "season", "date", "match_id")
+        .with_columns(
+            (pl.col("date") - pl.col("date").shift(1).over("club_id", "season"))
+            .dt.total_days()
+            .cast(pl.Int64)
+            .alias("rest_days")
+        )
+        .sort("date", "match_id", "is_home", descending=[False, False, True])
+    )
+    per_match = team_match.group_by("match_id").len()
+    if (per_match["len"] != 2).any():
+        raise ValueError("mart_team_match must have exactly two rows per match")
+    return MartTeamMatchSchema.validate(team_match)
+
+
+def curate_team_match(conn: duckdb.DuckDBPyConnection) -> None:
+    matches = conn.execute("SELECT * FROM stg_matches").pl()
+    team_match = build_team_match(matches)
+    _materialize(conn, "mart_team_match", team_match)
+    log.info("curate.team_match", rows=team_match.height)
 
 
 def curate_club_season_membership(conn: duckdb.DuckDBPyConnection) -> None:
@@ -233,17 +442,19 @@ def curate_matches(conn: duckdb.DuckDBPyConnection, dimension: ClubDimension | N
         ).alias("match_id"),
     )
 
-    curated = resolved.select(
-        "match_id",
-        "season",
-        "date",
-        "home_club_id",
-        "away_club_id",
-        pl.col("fthg").alias("home_goals"),
-        pl.col("ftag").alias("away_goals"),
-        pl.col("ftr").alias("result"),
-        *_benchmark_exprs(),
-    )
+    curated = _join_xg(
+        resolved.select(
+            "match_id",
+            "season",
+            "date",
+            "home_club_id",
+            "away_club_id",
+            pl.col("fthg").alias("home_goals"),
+            pl.col("ftag").alias("away_goals"),
+            pl.col("ftr").alias("result"),
+        ),
+        _understat_xg(conn, dimension),
+    ).join(resolved.select("match_id", *_benchmark_exprs()), on="match_id", how="left")
 
     _assert_no_self_fixtures(curated)
     _assert_result_matches_score(curated)
@@ -253,7 +464,12 @@ def curate_matches(conn: duckdb.DuckDBPyConnection, dimension: ClubDimension | N
     _materialize(conn, "stg_matches", validated)
     _materialize(conn, "stg_odds", odds)
     coverage = validated.group_by("benchmark_source").len().sort("benchmark_source").to_dicts()
-    log.info("curate.matches", rows=validated.height, benchmark_coverage=coverage)
+    log.info(
+        "curate.matches",
+        rows=validated.height,
+        benchmark_coverage=coverage,
+        xg_missing=validated["home_xg"].null_count(),
+    )
     log.info("curate.odds", rows=odds.height)
 
 
@@ -303,14 +519,14 @@ def curate_fixtures(
     )
 
     _assert_no_self_fixtures(curated)
-    validated = MartFixtureSchema.validate(curated)
+    validated = StgFixtureSchema.validate(curated)
 
-    _materialize(conn, "mart_fixtures", validated)
+    _materialize(conn, "stg_fixtures", validated)
     log.info("curate.fixtures", rows=validated.height)
 
 
 def reconcile_current_season(conn: duckdb.DuckDBPyConnection) -> dict[str, int]:
-    """Cross-source check (story B-07): for the season mart_fixtures covers, every
+    """Cross-source check (story B-07): for the season stg_fixtures covers, every
     finished FPL fixture that football-data.co.uk has also published must carry the
     same scoreline. A disagreement raises; count gaps in either direction are returned
     and logged, since football-data lags FPL by up to a week."""
@@ -319,7 +535,7 @@ def reconcile_current_season(conn: duckdb.DuckDBPyConnection) -> dict[str, int]:
         SELECT f.fixture_id, f.home_club_id, f.away_club_id,
                f.home_goals AS fpl_home, f.away_goals AS fpl_away,
                m.home_goals AS fd_home, m.away_goals AS fd_away
-        FROM mart_fixtures f
+        FROM stg_fixtures f
         LEFT JOIN stg_matches m
           ON m.season = f.season
          AND m.home_club_id = f.home_club_id
@@ -338,9 +554,9 @@ def reconcile_current_season(conn: duckdb.DuckDBPyConnection) -> dict[str, int]:
     fd_only = conn.execute(
         """
         SELECT count(*) FROM stg_matches m
-        WHERE m.season = (SELECT min(season) FROM mart_fixtures)
+        WHERE m.season = (SELECT min(season) FROM stg_fixtures)
           AND NOT EXISTS (
-            SELECT 1 FROM mart_fixtures f
+            SELECT 1 FROM stg_fixtures f
             WHERE f.finished AND f.home_club_id = m.home_club_id
               AND f.away_club_id = m.away_club_id
           )
@@ -357,7 +573,9 @@ def reconcile_current_season(conn: duckdb.DuckDBPyConnection) -> dict[str, int]:
 
 def curate_all(conn: duckdb.DuckDBPyConnection) -> None:
     dimension = load_club_dimension()
+    curate_club_dimension(conn, dimension)
     curate_club_season_membership(conn)
     curate_matches(conn, dimension)
     curate_fixtures(conn, dimension)
+    curate_team_match(conn)
     reconcile_current_season(conn)

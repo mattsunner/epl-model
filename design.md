@@ -279,8 +279,9 @@ DuckDB, single file at `data/pl.duckdb`, gitignored.
 Zones:
 
 - `raw_*`: views over the Parquet landing zone. Never mutated.
-- `stg_*`: typed, deduplicated, club IDs resolved, one row per natural key.
-- `mart_*`: model-ready. `mart_matches`, `mart_team_match`, `mart_fixtures`, `mart_club`, `mart_club_season`, `mart_odds`.
+- `dim_*`: dimensions from hand-maintained sources. `dim_club` from `club_aliases.yaml`.
+- `stg_*`: typed, deduplicated, club IDs resolved, one row per natural key, no cross-source derived features beyond the joins that define the row. `stg_matches` (results, xG, benchmark price), `stg_odds` (long, per bookmaker), `stg_fixtures` (current season), `stg_club_season` (membership bridge).
+- `mart_*`: the feature grain. `mart_team_match`: one row per club per match with goals, xG, points and league rest days for and against. Further marts are added when a feature needs them.
 
 Rationale for DuckDB over Postgres or plain Parquet: single-file, zero-service, reads Parquet natively, and the analytical query patterns here are exactly what it is built for. A local-only pipeline should not require a running database. See `docs/adr/0002-duckdb-as-analytical-store.md`.
 

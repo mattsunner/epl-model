@@ -179,7 +179,7 @@ def forecast(
     conn = connect()
     fixtures = conn.execute(
         "SELECT fixture_id, season, gameweek, kickoff_time, home_club_id, away_club_id, "
-        "home_goals, away_goals, finished FROM mart_fixtures ORDER BY kickoff_time, fixture_id"
+        "home_goals, away_goals, finished FROM stg_fixtures ORDER BY kickoff_time, fixture_id"
     ).pl()
     history = conn.execute(
         "SELECT season, date, home_club_id, away_club_id, home_goals, away_goals "

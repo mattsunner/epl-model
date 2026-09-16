@@ -1,7 +1,7 @@
 """Dixon-Coles match model (design.md section 6.2, rung 2): low-score dependence
 correction plus exponential time decay on top of the independent-Poisson floor. Must
-beat PoissonModel on held-out RPS or it does not ship -- that check is the evaluation
-harness's job, not yet built.
+beat PoissonModel on held-out RPS or it does not ship; `evaluate/report.py` makes that
+check and docs/evaluation.md records the result.
 
 Time decay is non-optional (design.md section 6.3): a squad from three seasons ago is a
 different team. `xi` -- how fast old matches lose influence -- is a genuine model

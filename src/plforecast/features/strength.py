@@ -1,27 +1,20 @@
 """Attack/defence strength inputs, time-decayed (design.md section 6.3 and 6.2).
 
-Design intent is xG-driven strength estimation -- finishing variance is largely noise
-over a 38-game horizon, and goals alone would flatter or punish teams for shot luck.
-That needs Understat, which is not ingested yet (design.md section 13's risk table
-names exactly this as a real, anticipated contingency: "Understat scraper breaks
-mid-season -> No current xG, model degrades to goals; goals-based fallback path in
-features/strength.py"). This module *is* that fallback path, built first because it is
-the one available now, not a placeholder -- swapping in xG later is a data-source
-change to the functions below, not a redesign.
+Rates here are a naive decayed average of a per-match quantity scored and conceded by
+venue, nothing more: not a fitted Poisson/Dixon-Coles parameter (those are solved
+jointly across every club, net of opponent strength). `metric` selects goals (the
+fallback path design.md 13 names for when Understat is unavailable) or xG (design.md
+6.3's intended input; requires the xG columns stg_matches carries).
 
 Time decay is non-optional (section 6.3): a squad from three seasons ago is a different
 team. `xi`, the decay rate, is a model-fitting decision tuned by backtest (section 6.2)
 and is never assumed here -- callers pass it in.
-
-What this deliberately is not: a fitted Poisson/Dixon-Coles attack-defence parameter.
-Those are solved jointly across every club at once, net of opponent strength. The rates
-here are a naive decayed average of goals scored/conceded by venue, nothing more -- a
-feature the model layer's Poisson fit consumes, not a substitute for that fit.
 """
 
 from __future__ import annotations
 
 from datetime import date
+from typing import Literal
 
 import pandera.polars as pa
 import polars as pl
@@ -33,8 +26,8 @@ class DecayWeightedMatchSchema(pa.DataFrameModel):
     date: Series[pl.Date]
     home_club_id: Series[str]
     away_club_id: Series[str]
-    home_goals: Series[int] = pa.Field(ge=0)
-    away_goals: Series[int] = pa.Field(ge=0)
+    home_goals: Series[float] = pa.Field(ge=0)  # goals, or xG when metric="xg"
+    away_goals: Series[float] = pa.Field(ge=0)
     days_since: Series[int] = pa.Field(ge=0)
     weight: Series[float] = pa.Field(gt=0, le=1.0)
 
@@ -69,15 +62,24 @@ def attach_decay_weights(matches: pl.DataFrame, *, as_of: date, xi: float) -> pl
     )
 
 
-def build_club_strength(matches: pl.DataFrame, *, as_of: date, xi: float) -> pl.DataFrame:
+def build_club_strength(
+    matches: pl.DataFrame, *, as_of: date, xi: float, metric: Literal["goals", "xg"] = "goals"
+) -> pl.DataFrame:
     """One row per club with at least one match on or before `as_of`: decayed average
     goals scored (`*_attack_rate`) and conceded (`*_defence_rate`), split by venue.
 
     A club with no rows here has no matches at or before `as_of` in this data --
     typically a newly promoted club with no top-flight history. That gap is exactly
-    what features/priors.py (not yet built; needs ClubElo + Transfermarkt) exists to
-    fill. This function does not paper over it with an assumed league-average rate.
+    what features/priors.py exists to fill. This function does not paper over it with
+    an assumed league-average rate.
+
+    `metric="xg"` uses `home_xg`/`away_xg` in place of goals (rows with null xG are
+    dropped first).
     """
+    if metric == "xg":
+        matches = matches.drop_nulls(["home_xg", "away_xg"]).with_columns(
+            pl.col("home_xg").alias("home_goals"), pl.col("away_xg").alias("away_goals")
+        )
     weighted = attach_decay_weights(matches, as_of=as_of, xi=xi)
 
     if weighted.height == 0:

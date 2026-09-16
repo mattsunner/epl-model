@@ -2,9 +2,9 @@
   "schema_version": "1.0.0",
   "season": "2026-27",
   "as_of_gameweek": 4,
-  "generated_at": "2026-09-16T16:18:40Z",
+  "generated_at": "2026-09-16T16:22:29Z",
   "provenance": {
-    "git_sha": "fb8d1703f4123bcb57bd53cefdcf2427907e7684",
+    "git_sha": "8cde7a56eda48c1c1b0bceebff24dfa532cc75d7",
     "git_dirty": true,
     "model": "dixon-coles",
     "model_config_hash": "7e6d67d6f6c252e7a80184eccd67b625e0454abaf88868d034e5c0c80385f7b4",

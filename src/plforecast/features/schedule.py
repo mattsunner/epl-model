@@ -28,9 +28,9 @@ class RestDaysSchema(pa.DataFrameModel):
 
 def build_rest_days(fixtures: pl.DataFrame) -> pl.DataFrame:
     """`fixtures` needs `fixture_id`, `kickoff_time`, `home_club_id`, `away_club_id` --
-    exactly mart_fixtures' shape. One row per fixture: how many days each side had
+    exactly stg_fixtures' shape. One row per fixture: how many days each side had
     since its previous fixture *in this same season's schedule*. Null for a club's
-    first fixture of the season -- mart_fixtures is FPL's current-season fixture list,
+    first fixture of the season -- stg_fixtures is FPL's current-season fixture list,
     so there is no earlier kickoff within it to measure from, and a summer break is not
     a rest-days signal worth inventing a number for.
 

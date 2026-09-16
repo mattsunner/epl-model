@@ -153,6 +153,8 @@ Acceptance criteria: move to `docs/design.md`; update links; or amend section 3.
 
 ### A-07 · P1 · Correction · Module docstrings carry stale project status
 
+**Status**: Done 16 Sep 2026: all six stale docstrings corrected.
+
 **As** a code reader, **I want** docstrings that describe the module's contract, **so
 that** I am not misled about what exists.
 
@@ -444,6 +446,8 @@ and a test that every one resolves 1:1 (mirroring `test_clubs.py`); B-05 unblock
 
 ### B-05 · P1 · Recommendation · Build the feature grain: `mart_team_match` with xG joined
 
+**Status**: Done 16 Sep 2026: xG joined onto `stg_matches` with coverage and scoreline assertions; `mart_team_match` built; `build_club_strength` takes `metric`.
+
 **As** the model author, **I want** one long table, one row per club per match, carrying
 goals, xG, non-penalty xG, and the odds, **so that** every feature and model reads the same
 grain and xG is actually usable.
@@ -462,6 +466,8 @@ Acceptance criteria:
 - `build_club_strength` reads from it.
 
 ### B-06 · P1 · Correction · "Swap in xG later is a data-source change" is not true
+
+**Status**: Decided 16 Sep 2026: ADR 0009 chooses an xG-rate model as rung 2.5, gated by the backtest. Implementation is the next step.
 
 Evidence: `strength.py:9-10` claims xG substitution is a data change. penaltyblog's
 Poisson and Dixon-Coles models take integer goal counts; xG is continuous. The model layer
@@ -506,6 +512,8 @@ season; a test asserts the current season is fetched live.
 ## B.2 Schema and zones
 
 ### B-09 · P1 · Recommendation · Define the zones precisely and name tables accordingly
+
+**Status**: Done 16 Sep 2026: zone criteria in design.md 5.4; `stg_fixtures`, `dim_club`, `stg_odds`, `mart_team_match`.
 
 Evidence: design.md section 5.4 defines `stg_*` as typed and resolved and `mart_*` as
 model-ready. `mart_fixtures` is typed and resolved only (staging grade). `stg_club_season`

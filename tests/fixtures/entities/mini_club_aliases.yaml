@@ -9,26 +9,26 @@ clubs:
     football_data_name: Arsenal
     fpl_code: 1
     clubelo_name: null
-    understat_name: null
+    understat_name: Arsenal
     transfermarkt_id: null
   - club_id: chelsea
     display_name: Chelsea
     football_data_name: Chelsea
     fpl_code: 2
     clubelo_name: null
-    understat_name: null
+    understat_name: Chelsea
     transfermarkt_id: null
   - club_id: leeds
     display_name: Leeds United
     football_data_name: Leeds
     fpl_code: 3
     clubelo_name: null
-    understat_name: null
+    understat_name: Leeds
     transfermarkt_id: null
   - club_id: watford
     display_name: Watford
     football_data_name: Watford
     fpl_code: null
     clubelo_name: null
-    understat_name: null
+    understat_name: Watford
     transfermarkt_id: null

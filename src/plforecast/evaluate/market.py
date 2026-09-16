@@ -8,8 +8,7 @@ De-vig method: Shin is the headline (design.md section 8.3: "multiplicative
 normalisation systematically overstates favourites, which biases the benchmark in
 exactly the probability region where the comparison matters most"), with
 multiplicative reported alongside so the methodological choice stays visible rather
-than buried in a config file. `docs/evaluation.md` is where both get reported together
-once the evaluation harness actually runs end to end and has numbers to publish.
+than buried in a config file. `docs/evaluation.md` reports both.
 
 Price source: `benchmark_*_odds` on stg_matches, chosen per match by curate's fallback
 chain (Pinnacle closing, then Betfair Exchange closing, then the site's average closing

@@ -270,9 +270,10 @@ def forecast(
 
     Played matches for the current season come from the FPL fixture list, which
     updates within hours of a result; football-data.co.uk lags by up to a week, so the
-    training set is stg_matches plus any FPL-finished fixture not yet in it."""
-    import structlog
-
+    training set is stg_matches plus any FPL-finished fixture not yet in it. The
+    pipeline itself (training-data assembly, promoted-club prior, fit, simulate) is
+    `forecasting.fit_and_simulate`, importable directly for anything other than
+    writing artifact files -- the notebook workbench in particular."""
     from plforecast.artifacts.schema import Provenance, export_json_schemas
     from plforecast.artifacts.writer import (
         build_fixtures_document,
@@ -284,202 +285,46 @@ def forecast(
         write_documents,
     )
     from plforecast.config import settings
-    from plforecast.entities.clubs import load_club_dimension
-    from plforecast.features.priors import (
-        PRIOR_GATE_XI,
-        build_prior,
-        build_survival_zone_reference,
-        needs_prior,
-        prior_pseudo_matches,
-    )
-    from plforecast.models.base import UnknownClubError
-    from plforecast.simulate.competition import PREMIER_LEAGUE
-    from plforecast.simulate.engine import simulate_season
-    from plforecast.simulate.tiebreak import PremierLeagueTiebreaks
+    from plforecast.forecasting import fit_and_simulate
 
-    log = structlog.get_logger()
-    factories = _model_factories()
-    if model == "shipped":
-        metrics_path = Path("docs/evaluation/metrics.json")
-        model = (
-            json.loads(metrics_path.read_text()).get("shipped_model", "dixon-coles")
-            if metrics_path.exists()
-            else "dixon-coles"
-        )
-    if model not in factories:
-        raise typer.BadParameter(f"unknown model {model!r}; choose from {sorted(factories)}")
-
-    conn = connect()
-    fixtures = conn.execute(
-        "SELECT fixture_id, season, gameweek, kickoff_time, home_club_id, away_club_id, "
-        "home_goals, away_goals, finished FROM stg_fixtures ORDER BY kickoff_time, fixture_id"
-    ).pl()
-    history = conn.execute(
-        "SELECT match_id, season, date, home_club_id, away_club_id, home_goals, away_goals, "
-        "home_xg, away_xg, result FROM stg_matches ORDER BY date"
-    ).pl()
-    # FPL's own current gameweek (story B-10), when landed; None on a database that
-    # predates `ingest fpl` landing stg_gameweeks, or has none flagged current.
-    has_gameweeks = conn.execute(
-        "SELECT count(*) FROM information_schema.tables WHERE table_name = 'stg_gameweeks'"
-    ).fetchone()
-    fpl_current_gameweek = None
-    if has_gameweeks and has_gameweeks[0]:
-        current_rows = conn.execute(
-            "SELECT gameweek FROM stg_gameweeks WHERE is_current"
-        ).fetchall()
-        if current_rows:
-            fpl_current_gameweek = int(current_rows[0][0])
-    conn.close()
-
-    season_label_ = str(fixtures["season"][0])
     generated_at = now_utc()
-    generated_date = generated_at.date()
-    played = fixtures.filter(pl.col("finished"))
-    remaining = fixtures.filter(~pl.col("finished"))
-
-    # Training data: history plus current-season results FPL has that football-data
-    # has not published yet (story B-07: FPL is authoritative for the live season).
-    fpl_results = played.select(
-        (
-            pl.lit(season_label_.replace("/", "-") + "-")
-            + pl.col("home_club_id")
-            + "-"
-            + pl.col("away_club_id")
-        ).alias("match_id"),
-        pl.lit(season_label_).alias("season"),
-        pl.col("kickoff_time").dt.date().alias("date"),
-        "home_club_id",
-        "away_club_id",
-        "home_goals",
-        "away_goals",
-        pl.lit(None, dtype=pl.Float64).alias("home_xg"),  # Understat lags FPL by a day
-        pl.lit(None, dtype=pl.Float64).alias("away_xg"),
-        pl.when(pl.col("home_goals") > pl.col("away_goals"))
-        .then(pl.lit("H"))
-        .when(pl.col("home_goals") < pl.col("away_goals"))
-        .then(pl.lit("A"))
-        .otherwise(pl.lit("D"))
-        .alias("result"),
-    )
-    missing_from_history = fpl_results.join(
-        history, on=["season", "home_club_id", "away_club_id"], how="anti"
-    )
-    training = pl.concat([history, missing_from_history]).sort("date")
-
-    # Promoted-club prior (ADR 0006, story C-08): a club in the fixture list with less
-    # than a season of results gets pseudo-observations built from the survival-zone
-    # reference, so it is rated from evidence rather than a handful of matches.
-    completed = training.filter(pl.col("season") != season_label_)
-    fixture_clubs = sorted(set(fixtures["home_club_id"]) | set(fixtures["away_club_id"]))
-    # PRIOR_GATE_XI, not the fitted model's own xi: a match model's fitting decay is
-    # tuned for rate estimation and is aggressive enough that even a club with
-    # hundreds of historical matches has an effective count near the threshold the
-    # moment a season is a few gameweeks old (verified: at xi=0.005 every established
-    # club was flagged). The gate needs a much gentler decay to do its actual job --
-    # separating a stale one-off season from a fresh one without penalising clubs that
-    # have simply been in the league the whole time.
-    needing_prior = [
-        club
-        for club in fixture_clubs
-        if needs_prior(club, training, as_of=generated_date, xi=PRIOR_GATE_XI)
-    ]
-    if needing_prior:
-        reference = build_survival_zone_reference(completed)
-        pseudo = [
-            prior_pseudo_matches(
-                build_prior(club, reference),
-                opponents=fixture_clubs,
-                season=season_label_,
-                as_of=generated_date,
-                seed=seed,
-            )
-            for club in needing_prior
-        ]
-        training = pl.concat([training, *pseudo], how="vertical_relaxed").sort("date")
-        log.info(
-            "forecast.promoted_club_prior",
-            clubs=needing_prior,
-            pseudo_matches=sum(p.height for p in pseudo),
-            reference_observations=reference.n_observations,
-            reference_mean_points=round(reference.mean_points, 1),
-        )
-    log.info(
-        "forecast.training",
-        rows=training.height,
-        fpl_only_results=missing_from_history.height,
-        season=season_label_,
-    )
-
-    fitted = factories[model]().fit(training)
     try:
-        for row in remaining.select("home_club_id", "away_club_id").unique().iter_rows():
-            fitted.scoreline_matrix(row[0], row[1], max_goals)
-    except UnknownClubError as exc:
-        raise typer.Exit(code=1) from typer.BadParameter(
-            f"{exc}. The promoted-club prior should have covered this club; check "
-            "needs_prior() and the fixture list."
+        run = fit_and_simulate(
+            model,
+            simulations=simulations,
+            seed=seed,
+            max_goals=max_goals,
+            as_of=generated_at.date(),
         )
-
-    if fpl_current_gameweek is not None:
-        as_of_gameweek = fpl_current_gameweek
-    else:
-        # Fallback for a database without stg_gameweeks: the last gameweek every one
-        # of whose fixtures is finished.
-        finished_by_gw = played.group_by("gameweek").len().rename({"len": "finished"})
-        all_by_gw = fixtures.group_by("gameweek").len().rename({"len": "total"})
-        complete_gws = (
-            all_by_gw.join(finished_by_gw, on="gameweek", how="left")
-            .fill_null(0)
-            .filter(pl.col("finished") == pl.col("total"))
-            .drop_nulls("gameweek")
-        )
-        as_of_gameweek = max((int(g) for g in complete_gws["gameweek"].to_list()), default=0)
-
-    result = simulate_season(
-        played.select("home_club_id", "away_club_id", "home_goals", "away_goals"),
-        remaining.select("home_club_id", "away_club_id"),
-        fitted,
-        PremierLeagueTiebreaks(PREMIER_LEAGUE),
-        n_simulations=simulations,
-        max_goals=max_goals,
-        seed=seed,
-    )
+    except ValueError as exc:
+        raise typer.Exit(code=1) from typer.BadParameter(str(exc))
 
     sha, dirty = git_provenance()
     provenance = Provenance(
         git_sha=sha,
         git_dirty=dirty,
-        model=model,
-        model_config_hash=fitted.config_hash,
+        model=run.model_name,
+        model_config_hash=run.fitted.config_hash,
         simulations=simulations,
         random_seed=seed,
         sources=snapshot_provenance(settings.raw_dir),
         package_versions=package_versions(),
     )
-    dimension = load_club_dimension()
-    display_names = dict(
-        zip(
-            dimension.frame["club_id"].to_list(),
-            dimension.frame["display_name"].to_list(),
-            strict=True,
-        )
-    )
-    season_slug = season_label_.replace("/", "-")
+    season_slug = run.season_label.replace("/", "-")
     forecast_doc = build_forecast_document(
-        result,
-        played=played,
-        display_names=display_names,
+        run.result,
+        played=run.played,
+        display_names=run.display_names,
         season=season_slug,
-        as_of_gameweek=as_of_gameweek,
+        as_of_gameweek=run.as_of_gameweek,
         generated_at=generated_at,
         provenance=provenance,
     )
     fixtures_doc = build_fixtures_document(
-        remaining,
-        fitted,
+        run.remaining,
+        run.fitted,
         season=season_slug,
-        as_of_gameweek=as_of_gameweek,
+        as_of_gameweek=run.as_of_gameweek,
         generated_at=generated_at,
         provenance=provenance,
         max_goals=max_goals,
@@ -488,8 +333,8 @@ def forecast(
     written += export_json_schemas(artifacts_dir / "schema")
 
     typer.echo(
-        f"{season_label_} after gameweek {as_of_gameweek}: {played.height} played, "
-        f"{remaining.height} remaining, {simulations:,} simulations, model={model}"
+        f"{run.season_label} after gameweek {run.as_of_gameweek}: {run.played.height} played, "
+        f"{run.remaining.height} remaining, {simulations:,} simulations, model={run.model_name}"
     )
     header = ("club", "pld", "pts", "E[pts]", "title", "top4", "rel")
     typer.echo(

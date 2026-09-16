@@ -2,9 +2,9 @@
   "schema_version": "1.0.0",
   "season": "2026-27",
   "as_of_gameweek": 4,
-  "generated_at": "2026-09-16T19:43:09Z",
+  "generated_at": "2026-09-16T20:22:46Z",
   "provenance": {
-    "git_sha": "1c7bafe3b408b5196ee63f9e66b3f5b5d9f15ebe",
+    "git_sha": "645b5678d03ea8950043132c54691f5b5c9cc70a",
     "git_dirty": true,
     "model": "xg-rates",
     "model_config_hash": "2bada8d8fab763758e4149f60179c7b0eda5585d86dd9ca4c0a1a6ec4b328fb3",
@@ -13,37 +13,37 @@
     "sources": [
       {
         "name": "football-data",
-        "fetched_at": "2026-09-16T11:01:12.914664",
+        "fetched_at": "2026-09-16T20:13:18.784483Z",
         "rows": 4220,
-        "content_hash": "39e1b2e1379b51558f3be4cd5a2138807f402255526f1cca43f73b5e7ed95451"
+        "content_hash": "16c6e22acee4ec6cc1046acbd6a7acfd58e9a2e302283e3400649ebaa2a9e0ef"
       },
       {
         "name": "fpl-events",
-        "fetched_at": "2026-09-16T19:29:10.014232Z",
+        "fetched_at": "2026-09-16T20:13:19.541584Z",
         "rows": 38,
         "content_hash": "33bef18333aca966d0109f387b6ea7a03ed8c6ed6e031b632ba7e95f1c6ecbac"
       },
       {
         "name": "fpl-fixtures",
-        "fetched_at": "2026-09-16T19:29:09.999853Z",
+        "fetched_at": "2026-09-16T20:13:19.528537Z",
         "rows": 380,
         "content_hash": "ff0ed9b9f93e409cabbd09e40e2422feb96faf79919bbe59220e96a662c5dc34"
       },
       {
         "name": "fpl-players",
-        "fetched_at": "2026-09-16T19:29:09.976901Z",
+        "fetched_at": "2026-09-16T20:13:19.506553Z",
         "rows": 659,
         "content_hash": "46549b2fe9992fb567c203467f4cf73caa8caecdb2bd2c0d3433d00a843c33ab"
       },
       {
         "name": "fpl-teams",
-        "fetched_at": "2026-09-16T19:29:09.900915Z",
+        "fetched_at": "2026-09-16T20:13:19.431817Z",
         "rows": 20,
         "content_hash": "84497486e732776b9a589f245c9bb7592ffcbdc9f83ba2c847f029ced13524cb"
       },
       {
         "name": "understat",
-        "fetched_at": "2026-09-16T19:21:56.175411Z",
+        "fetched_at": "2026-09-16T20:13:20.143093Z",
         "rows": 4220,
         "content_hash": "86dc09b04a57a3eca3ce10bd81d89f386271e2ec38fc3f748536666cd19c4113"
       }

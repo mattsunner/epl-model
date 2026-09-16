@@ -1,6 +1,6 @@
 """FPL API adapter: fixture list, kickoff times, and player availability/suspensions
-(design.md section 5.1). One physical source (fantasy.premierleague.com) backs three
-raw tables, so this module implements three independent Source-conforming classes
+(design.md section 5.1). One physical source (fantasy.premierleague.com) backs four
+raw tables, so this module implements four independent Source-conforming classes
 rather than one:
 
 - FPLTeamsSource: the team roster mapping the per-season numeric `id` used everywhere
@@ -8,6 +8,12 @@ rather than one:
   is free to land alongside the players endpoint since both come from bootstrap-static.
 - FPLPlayersSource: player availability and suspensions.
 - FPLFixturesSource: the remaining/played fixture list and kickoff times.
+- FPLEventsSource: the gameweek calendar (`bootstrap-static`'s `events` array) --
+  deadlines and FPL's own `is_current`/`is_next`/`is_previous`/`finished` flags per
+  gameweek. Story B-10: `as_of_gameweek` on the forecast artifact should come from
+  FPL's own notion of the current gameweek, not be re-derived by counting finished
+  fixtures, and the season label FPL fixtures get stamped with should come from the
+  fixture list's own kickoff dates, not the wall clock.
 
 Team and player data both come from the same bootstrap-static endpoint. Each class
 fetches it independently (via cached_get) rather than sharing a fetch result, so each
@@ -64,6 +70,20 @@ class FixtureSchema(pa.DataFrameModel):
     home_score: Series[int] = pa.Field(ge=0, nullable=True)
     away_score: Series[int] = pa.Field(ge=0, nullable=True)
     finished: Series[bool]
+
+    class Config:
+        strict = True
+        coerce = True
+
+
+class EventSchema(pa.DataFrameModel):
+    gameweek: Series[int] = pa.Field(ge=1, unique=True)
+    name: Series[str]
+    deadline_time: Series[pl.Datetime] = pa.Field(dtype_kwargs={"time_zone": "UTC"})
+    finished: Series[bool]
+    is_previous: Series[bool]
+    is_current: Series[bool]
+    is_next: Series[bool]
 
     class Config:
         strict = True
@@ -156,6 +176,32 @@ class FPLPlayersSource:
         return PlayerAvailabilitySchema.validate(df)
 
 
+class FPLEventsSource:
+    name = "fpl-events"
+
+    def __init__(self, config: Settings = settings) -> None:
+        self.config = config
+
+    def fetch(self, *, since: date | None = None) -> RawPayload:
+        with _client(self.config) as client:
+            return _fetch_raw(
+                self.config.fpl_bootstrap_url, label="bootstrap", config=self.config, client=client
+            )
+
+    def parse(self, payload: RawPayload) -> pl.DataFrame:
+        body = json.loads(payload.parts[0].content)
+        df = pl.DataFrame(body["events"], schema_overrides={"deadline_time": pl.Utf8}).select(
+            pl.col("id").alias("gameweek"),
+            pl.col("name"),
+            pl.col("deadline_time").str.to_datetime("%Y-%m-%dT%H:%M:%SZ", time_zone="UTC"),
+            pl.col("finished"),
+            pl.col("is_previous"),
+            pl.col("is_current"),
+            pl.col("is_next"),
+        )
+        return EventSchema.validate(df)
+
+
 class FPLFixturesSource:
     name = "fpl-fixtures"
 
@@ -187,8 +233,13 @@ class FPLFixturesSource:
 
 
 def ingest() -> None:
-    """Land all three FPL-derived raw tables as immutable snapshots."""
-    for source in (FPLTeamsSource(), FPLPlayersSource(), FPLFixturesSource()):
+    """Land all four FPL-derived raw tables as immutable snapshots."""
+    for source in (
+        FPLTeamsSource(),
+        FPLPlayersSource(),
+        FPLFixturesSource(),
+        FPLEventsSource(),
+    ):
         payload = source.fetch()
         df = source.parse(payload)
         write_snapshot(

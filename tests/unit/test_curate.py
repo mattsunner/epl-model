@@ -9,10 +9,13 @@ import pytest
 
 from plforecast.entities.clubs import load_club_dimension
 from plforecast.storage.curate import (
+    build_curate_manifest,
     build_team_match,
     curate_club_dimension,
     curate_fixtures,
+    curate_gameweeks,
     curate_matches,
+    derive_season_from_kickoffs,
     reconcile_current_season,
 )
 
@@ -491,3 +494,148 @@ def test_curate_matches_rejects_xg_with_a_large_date_gap(conn, dimension):
 
     with pytest.raises(ValueError, match="differ from football-data by more than a day"):
         curate_matches(conn, dimension)
+
+
+# ---- B-10: season derived from data, not the wall clock ----
+
+
+def test_derive_season_from_kickoffs_uses_the_earliest_known_kickoff():
+    fixtures = pl.DataFrame(
+        {
+            "kickoff_time": [
+                datetime(2026, 8, 21, 15, 0, tzinfo=ZoneInfo("UTC")),
+                datetime(2026, 9, 1, 15, 0, tzinfo=ZoneInfo("UTC")),
+            ]
+        }
+    )
+    assert derive_season_from_kickoffs(fixtures) == "2026/27"
+
+
+def test_derive_season_from_kickoffs_handles_the_july_rollover_from_data_not_today():
+    # A fixture list whose earliest known kickoff is in June still belongs to the
+    # *previous* season by the July convention -- and this must not depend on what
+    # today's wall-clock date happens to be when curate runs.
+    fixtures = pl.DataFrame({"kickoff_time": [datetime(2026, 6, 1, 15, 0, tzinfo=ZoneInfo("UTC"))]})
+    assert derive_season_from_kickoffs(fixtures) == "2025/26"
+
+
+def test_derive_season_from_kickoffs_falls_back_when_every_kickoff_is_null():
+    fixtures = pl.DataFrame(
+        {"kickoff_time": pl.Series([None, None], dtype=pl.Datetime("us", "UTC"))}
+    )
+    assert derive_season_from_kickoffs(fixtures, fallback_today=date(2026, 9, 16)) == "2026/27"
+
+
+def test_curate_fixtures_stamps_season_from_kickoffs_not_settings_wall_clock(conn, dimension):
+    """Regression: settings.current_season_start_year() (the wall clock) must not be
+    consulted at all once real kickoff data exists, however far it disagrees with it."""
+    _seed_raw_fpl_fixtures(
+        conn,
+        [
+            _base_fixture_row(
+                kickoff_time=datetime(2019, 8, 9, 15, 0, tzinfo=ZoneInfo("UTC")),
+            )
+        ],
+    )
+    curate_fixtures(conn, dimension)
+    result = conn.execute("SELECT season FROM stg_fixtures").pl()
+    assert result["season"].to_list() == ["2019/20"]
+
+
+# ---- B-10: FPL's own gameweek calendar ----
+
+
+def _seed_raw_fpl_events(conn: duckdb.DuckDBPyConnection, rows: list[dict]) -> None:
+    df = pl.DataFrame(rows)
+    conn.register("_seed_events", df.to_arrow())
+    conn.execute("CREATE TABLE raw_fpl_events AS SELECT * FROM _seed_events")
+    conn.unregister("_seed_events")
+
+
+def _event_row(**overrides) -> dict:
+    row = {
+        "gameweek": 1,
+        "name": "Gameweek 1",
+        "deadline_time": datetime(2026, 8, 21, 17, 30, tzinfo=ZoneInfo("UTC")),
+        "finished": True,
+        "is_previous": False,
+        "is_current": False,
+        "is_next": False,
+        "filename": "data/raw/fpl-events/20260101T000000Z/data.parquet",
+    }
+    row.update(overrides)
+    return row
+
+
+def test_curate_gameweeks_materialises_stg_gameweeks(conn):
+    _seed_raw_fpl_events(
+        conn,
+        [
+            _event_row(gameweek=3, is_previous=True),
+            _event_row(gameweek=4, is_current=True),
+            _event_row(gameweek=5, finished=False, is_next=True),
+        ],
+    )
+
+    curate_gameweeks(conn)
+    result = conn.execute("SELECT * FROM stg_gameweeks ORDER BY gameweek").pl()
+
+    assert result["gameweek"].to_list() == [3, 4, 5]
+    assert result.filter(pl.col("is_current"))["gameweek"].to_list() == [4]
+
+
+def test_curate_gameweeks_skips_without_raising_when_no_snapshot_exists(conn):
+    curate_gameweeks(conn)  # no raw_fpl_events table at all
+    tables = conn.execute(
+        "SELECT count(*) FROM information_schema.tables WHERE table_name = 'stg_gameweeks'"
+    ).fetchone()
+    assert tables[0] == 0
+
+
+# ---- B-11: lineage (curated_at column, manifest) ----
+
+
+def test_curated_at_is_stamped_on_every_curated_table_and_shared_across_a_run(conn, dimension):
+    _seed_raw_footballdata_matches(conn, [_base_match_row()])
+    _seed_raw_fpl_fixtures(conn, [_base_fixture_row()])
+    _seed_raw_fpl_events(conn, [_event_row()])
+
+    curated_at = datetime(2026, 9, 16, 12, 0, tzinfo=ZoneInfo("UTC"))
+    curate_club_dimension(conn, dimension, curated_at=curated_at)
+    curate_matches(conn, dimension, curated_at=curated_at)
+    curate_fixtures(conn, dimension, curated_at=curated_at)
+    curate_gameweeks(conn, curated_at=curated_at)
+
+    for table in ("dim_club", "stg_matches", "stg_fixtures", "stg_gameweeks"):
+        values = (
+            conn.execute(f"SELECT DISTINCT curated_at FROM {table}").pl()["curated_at"].to_list()
+        )
+        assert values == [curated_at], f"{table} curated_at mismatch: {values}"
+
+
+def test_materialize_defaults_curated_at_to_now_when_called_standalone(conn, dimension):
+    curate_club_dimension(conn, dimension)  # no curated_at given
+    value = conn.execute("SELECT curated_at FROM dim_club LIMIT 1").pl()["curated_at"].item()
+    assert value is not None
+
+
+def test_build_curate_manifest_names_every_table_its_row_count_and_its_raw_snapshots(
+    conn, dimension
+):
+    _seed_raw_footballdata_matches(conn, [_base_match_row()])
+    _seed_raw_fpl_fixtures(conn, [_base_fixture_row()])
+
+    curated_at = datetime(2026, 9, 16, 12, 0, tzinfo=ZoneInfo("UTC"))
+    curate_club_dimension(conn, dimension, curated_at=curated_at)
+    curate_matches(conn, dimension, curated_at=curated_at)
+    curate_fixtures(conn, dimension, curated_at=curated_at)
+
+    manifest = build_curate_manifest(conn, curated_at=curated_at)
+
+    assert manifest["curated_at"] == curated_at.isoformat()
+    assert manifest["tables"]["dim_club"] == {"rows": 4, "sources": {"club_aliases.yaml": None}}
+    stg_matches = manifest["tables"]["stg_matches"]
+    assert stg_matches["rows"] == 1
+    assert stg_matches["sources"]["raw_footballdata_matches"] == "20260101T000000Z"
+    assert stg_matches["sources"]["raw_understat_team_match"] is None  # not ingested
+    assert "stg_gameweeks" not in manifest["tables"]  # never curated in this test

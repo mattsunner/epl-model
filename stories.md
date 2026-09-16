@@ -546,6 +546,8 @@ Acceptance criteria:
 
 ### B-10 · P2 · Recommendation · Derive season and gameweek from the data, not the wall clock
 
+**Status**: Done 16 Sep 2026: `stg_fixtures.season` derived from the fixture list's own earliest kickoff via `derive_season_from_kickoffs`, not the wall clock; `FPLEventsSource` lands the gameweek calendar as `raw_fpl_events`, curated into `stg_gameweeks`; `forecast`'s `as_of_gameweek` reads FPL's own `is_current` flag, falling back to the finished-fixture computation only when `stg_gameweeks` is absent.
+
 Evidence: `curate.py:167` stamps `mart_fixtures.season` from today's date with a July
 rollover. FPL's API rolls over on its own schedule; a June or early-July run would label
 next season's fixtures with last season's label. The artifact needs `as_of_gameweek`
@@ -557,6 +559,8 @@ Acceptance criteria: season derived from the minimum fixture kickoff; a small
 tests.
 
 ### B-11 · P2 · Recommendation · Add lineage columns and a curate manifest
+
+**Status**: Done 16 Sep 2026, with one deliberate deviation: every curated table carries a shared `curated_at` timestamp per `curate_all()` run, but full snapshot lineage is a manifest (`data/curate-manifest.json`, row counts plus every raw view each table read and its snapshot directory) rather than a per-row `source_snapshot` column, since most curated tables join two or more raw sources (stg_matches alone reads football-data and Understat) and one column would misrepresent that. `--snapshot` pin deferred: immutable raw snapshots plus the manifest already name exactly what a run used.
 
 Evidence: `stg_*` and `mart_*` rows carry no snapshot identifier or load time; the design's
 "given a git SHA and a data snapshot, any run reproduces" (section 1.1) has no way to name

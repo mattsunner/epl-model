@@ -6,7 +6,12 @@ import polars as pl
 import pytest
 
 from plforecast.ingest.base import RawPart, RawPayload
-from plforecast.ingest.fpl import FPLFixturesSource, FPLPlayersSource, FPLTeamsSource
+from plforecast.ingest.fpl import (
+    FPLEventsSource,
+    FPLFixturesSource,
+    FPLPlayersSource,
+    FPLTeamsSource,
+)
 
 FIXTURES_DIR = Path(__file__).parent.parent / "fixtures" / "fpl"
 BOOTSTRAP = FIXTURES_DIR / "bootstrap_sample.json"
@@ -78,3 +83,26 @@ def test_fixtures_parse_handles_unplayed_fixtures():
     played = df.filter(pl.col("fpl_fixture_id") == 1)
     assert played["home_score"].item() == 3
     assert played["away_score"].item() == 0
+
+
+def test_events_parse_lands_the_gameweek_calendar():
+    payload = _payload("fpl-events", "bootstrap", BOOTSTRAP.read_bytes())
+    df = FPLEventsSource().parse(payload)
+
+    assert df.height == 4
+    assert set(df.columns) == {
+        "gameweek",
+        "name",
+        "deadline_time",
+        "finished",
+        "is_previous",
+        "is_current",
+        "is_next",
+    }
+    current = df.filter(pl.col("is_current"))
+    assert current["gameweek"].to_list() == [3]
+    assert current["finished"].item() is True  # FPL keeps a finished gameweek "current"
+
+    upcoming = df.filter(pl.col("gameweek") == 4)
+    assert upcoming["finished"].item() is False
+    assert upcoming["is_next"].item() is True

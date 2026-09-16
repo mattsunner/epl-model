@@ -48,13 +48,24 @@ def db_migrate() -> None:
 
 
 @app.command()
-def curate() -> None:
-    """Materialise stg_*/mart_* tables from the raw_* views."""
+def curate(
+    manifest_path: Annotated[
+        Path, typer.Option(help="Where the lineage manifest is written (story B-11).")
+    ] = Path("data/curate-manifest.json"),
+) -> None:
+    """Materialise dim_*/stg_*/mart_* tables from the raw_* views and write a manifest
+    of row counts and raw-snapshot lineage next to the database."""
+    import json
+
     from plforecast.storage.curate import curate_all
 
     conn = connect()
-    curate_all(conn)
+    manifest = curate_all(conn)
     conn.close()
+
+    manifest_path.parent.mkdir(parents=True, exist_ok=True)
+    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
+    typer.echo(f"written: {manifest_path}")
 
 
 @app.command()
@@ -295,6 +306,18 @@ def forecast(
         "SELECT match_id, season, date, home_club_id, away_club_id, home_goals, away_goals, "
         "home_xg, away_xg, result FROM stg_matches ORDER BY date"
     ).pl()
+    # FPL's own current gameweek (story B-10), when landed; None on a database that
+    # predates `ingest fpl` landing stg_gameweeks, or has none flagged current.
+    has_gameweeks = conn.execute(
+        "SELECT count(*) FROM information_schema.tables WHERE table_name = 'stg_gameweeks'"
+    ).fetchone()
+    fpl_current_gameweek = None
+    if has_gameweeks and has_gameweeks[0]:
+        current_rows = conn.execute(
+            "SELECT gameweek FROM stg_gameweeks WHERE is_current"
+        ).fetchall()
+        if current_rows:
+            fpl_current_gameweek = int(current_rows[0][0])
     conn.close()
 
     season_label_ = str(fixtures["season"][0])
@@ -381,15 +404,20 @@ def forecast(
             "needs_prior() and the fixture list."
         )
 
-    finished_by_gw = played.group_by("gameweek").len().rename({"len": "finished"})
-    all_by_gw = fixtures.group_by("gameweek").len().rename({"len": "total"})
-    complete_gws = (
-        all_by_gw.join(finished_by_gw, on="gameweek", how="left")
-        .fill_null(0)
-        .filter(pl.col("finished") == pl.col("total"))
-        .drop_nulls("gameweek")
-    )
-    as_of_gameweek = max((int(g) for g in complete_gws["gameweek"].to_list()), default=0)
+    if fpl_current_gameweek is not None:
+        as_of_gameweek = fpl_current_gameweek
+    else:
+        # Fallback for a database without stg_gameweeks: the last gameweek every one
+        # of whose fixtures is finished.
+        finished_by_gw = played.group_by("gameweek").len().rename({"len": "finished"})
+        all_by_gw = fixtures.group_by("gameweek").len().rename({"len": "total"})
+        complete_gws = (
+            all_by_gw.join(finished_by_gw, on="gameweek", how="left")
+            .fill_null(0)
+            .filter(pl.col("finished") == pl.col("total"))
+            .drop_nulls("gameweek")
+        )
+        as_of_gameweek = max((int(g) for g in complete_gws["gameweek"].to_list()), default=0)
 
     result = simulate_season(
         played.select("home_club_id", "away_club_id", "home_goals", "away_goals"),

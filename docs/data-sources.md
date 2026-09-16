@@ -41,16 +41,26 @@ ingestion contract every adapter implements.
 
 ## FPL API
 
-- **Responsibility**: fixture list, kickoff times, player availability and suspensions.
-  One physical source backs three raw tables (`src/plforecast/ingest/fpl.py` explains
-  why one adapter module produces three `Source`-conforming classes rather than one).
+- **Responsibility**: fixture list, kickoff times, player availability and
+  suspensions, and the gameweek calendar. One physical source backs four raw tables
+  (`src/plforecast/ingest/fpl.py` explains why one adapter module produces four
+  `Source`-conforming classes rather than one).
 - **Access**: no auth, no published rate limit.
-  - `https://fantasy.premierleague.com/api/bootstrap-static/` -- team roster (`teams`)
-    and player availability (`elements`). ~1.7MB; both `FPLTeamsSource` and
-    `FPLPlayersSource` fetch it independently, but the TTL cache means only the first
-    of the two is a live request.
+  - `https://fantasy.premierleague.com/api/bootstrap-static/` -- team roster (`teams`),
+    player availability (`elements`), and the gameweek calendar (`events`). ~1.7MB;
+    `FPLTeamsSource`, `FPLPlayersSource` and `FPLEventsSource` all fetch it
+    independently, but the TTL cache means only the first of the three is a live
+    request.
   - `https://fantasy.premierleague.com/api/fixtures/` -- the full season's fixture list
     in one response, played and unplayed.
+- **Gameweek calendar**: `events[]` carries each gameweek's deadline and FPL's own
+  `is_previous`/`is_current`/`is_next`/`finished` flags, landed as `stg_gameweeks`.
+  `as_of_gameweek` on the forecast artifact reads `is_current` directly rather than
+  being re-derived from which fixtures happen to be finished (story B-10) -- note FPL
+  keeps a gameweek "current" for a while after it finishes, not just while it is live.
+  The season label stamped on `stg_fixtures` is likewise derived from the fixture
+  list's own earliest kickoff, not the wall clock, so a curate run in June or early
+  July does not mislabel next season's fixtures with last season's.
 - **Team roster and identifiers**: `teams[].id` is a 1-20 index re-assigned every
   season (alphabetical), so it is *not* a stable club key. `teams[].code` is stable
   across seasons (Arsenal 3, Aston Villa 7, Manchester United 1, ...) and is what

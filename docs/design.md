@@ -114,7 +114,7 @@ pl-forecast/
 │   │   ├── base.py                # Source protocol, retry, rate limiting, TTL cache, snapshots
 │   │   ├── footballdata.py        # results + every closing-odds set (ADR 0007)
 │   │   ├── understat.py           # team-level xG via soccerdata; current season always live
-│   │   ├── fpl.py                 # fixtures, kickoff times, roster (stable `code`), availability
+│   │   ├── fpl.py                 # fixtures, kickoff times, roster (stable `code`), availability, gameweek calendar
 │   │   ├── clubelo.py             # planned (story C-16)
 │   │   └── transfermarkt.py       # planned, v2 (story C-16)
 │   │
@@ -265,7 +265,7 @@ Zones:
 
 - `raw_*`: views over the Parquet landing zone. Never mutated.
 - `dim_*`: dimensions from hand-maintained sources. `dim_club` from `club_aliases.yaml`.
-- `stg_*`: typed, deduplicated, club IDs resolved, one row per natural key, no cross-source derived features beyond the joins that define the row. `stg_matches` (results, xG, benchmark price), `stg_odds` (long, per bookmaker), `stg_fixtures` (current season), `stg_club_season` (membership bridge).
+- `stg_*`: typed, deduplicated, club IDs resolved, one row per natural key, no cross-source derived features beyond the joins that define the row. `stg_matches` (results, xG, benchmark price), `stg_odds` (long, per bookmaker), `stg_fixtures` (current season, season derived from its own kickoffs), `stg_club_season` (membership bridge), `stg_gameweeks` (FPL's own gameweek calendar).
 - `mart_*`: the feature grain. `mart_team_match`: one row per club per match with goals, xG, points and league rest days for and against. Further marts are added when a feature needs them.
 
 Rationale for DuckDB over Postgres or plain Parquet: single-file, zero-service, reads Parquet natively, and the analytical query patterns here are exactly what it is built for. A local-only pipeline should not require a running database. See `docs/adr/0002-duckdb-as-analytical-store.md`.

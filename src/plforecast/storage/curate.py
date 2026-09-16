@@ -8,7 +8,12 @@ Zones (story B-09):
   club IDs resolved, one row per natural key, benchmark closing price chosen.
 - stg_odds: one row per (match, bookmaker) closing 1X2 price, long shape.
 - stg_fixtures: the full current-season fixture list (FPL), club IDs resolved. What
-  the simulation engine reads remaining fixtures from.
+  the simulation engine reads remaining fixtures from. `season` is derived from the
+  fixture list's own earliest kickoff, not the wall clock (story B-10): a curate run
+  in June or early July would otherwise mislabel next season's fixtures.
+- stg_gameweeks: FPL's own gameweek calendar (deadlines, `is_current`/`is_next`/
+  `is_previous`/`finished`), landed so `as_of_gameweek` on the forecast artifact comes
+  from FPL's own notion of the current gameweek rather than being re-derived.
 - mart_team_match: one row per club per match (the feature grain), with goals, xG,
   points and league rest days for and against.
 
@@ -18,6 +23,16 @@ therefore always starts from the most recently landed snapshot of each view
 (`latest_snapshot_sql`), and stg_matches additionally dedupes on its natural key as a
 second guard.
 
+Lineage (story B-11): every curated table carries a `curated_at` column, one shared
+timestamp per `curate_all()` run. Full snapshot lineage -- which raw snapshot each
+table actually drew from -- is not a per-row column, because most curated tables join
+two or more raw sources (stg_matches alone reads football-data *and* Understat) and a
+single `source_snapshot` field would misrepresent that. It is instead written as
+`build_curate_manifest()`'s JSON, one entry per table naming every raw view it read and
+the snapshot directory that was current for each, alongside row counts -- the "given a
+git SHA and a data snapshot, any run reproduces" requirement (design.md 1.1) needs the
+full set, not a single name.
+
 The market benchmark price on stg_matches (`benchmark_*_odds`, `benchmark_source`) is
 chosen per match by BENCHMARK_CHAIN: Pinnacle closing where the site still publishes
 it, then Betfair Exchange closing, then the site's average closing price (ADR 0007).
@@ -25,13 +40,17 @@ it, then Betfair Exchange closing, then the site's average closing price (ADR 00
 
 from __future__ import annotations
 
+from datetime import UTC, date, datetime
+from pathlib import Path
+from typing import Any
+
 import duckdb
 import pandera.polars as pa
 import polars as pl
 import structlog
 from pandera.typing.polars import Series
 
-from plforecast.config import season_label, settings
+from plforecast.config import Settings, season_label, settings
 from plforecast.entities.clubs import ClubDimension, load_club_dimension
 from plforecast.entities.competitions import build_club_season_membership
 from plforecast.ingest.footballdata import CLOSING_ODDS_SETS, closing_odds_columns
@@ -166,9 +185,22 @@ def latest_snapshot_sql(view: str) -> str:
     )
 
 
-def _materialize(conn: duckdb.DuckDBPyConnection, table: str, df: pl.DataFrame) -> None:
+def _materialize(
+    conn: duckdb.DuckDBPyConnection,
+    table: str,
+    df: pl.DataFrame,
+    *,
+    curated_at: datetime | None = None,
+) -> None:
+    """Replace `table` wholesale with `df`. `curated_at` (story B-11) is appended as a
+    column after schema validation, not through it: it is operational metadata about
+    *when this row was written*, not part of any curated table's business schema, and
+    every curate_* function's own schema-validated output (several are also tested
+    standalone) should not have to carry it. Defaults to now() so a curate_* function
+    called directly, outside curate_all's shared timestamp, still gets a real value."""
+    stamped = df.with_columns(pl.lit(curated_at or datetime.now(UTC)).alias("curated_at"))
     staging_name = f"_incoming_{table}"
-    conn.register(staging_name, df.to_arrow())
+    conn.register(staging_name, stamped.to_arrow())
     conn.execute(f"CREATE OR REPLACE TABLE {table} AS SELECT * FROM {staging_name}")
     conn.unregister(staging_name)
 
@@ -227,7 +259,9 @@ class MartTeamMatchSchema(pa.DataFrameModel):
         coerce = True
 
 
-def curate_club_dimension(conn: duckdb.DuckDBPyConnection, dimension: ClubDimension) -> None:
+def curate_club_dimension(
+    conn: duckdb.DuckDBPyConnection, dimension: ClubDimension, *, curated_at: datetime | None = None
+) -> None:
     frame = dimension.frame.select(
         "club_id",
         "display_name",
@@ -238,7 +272,7 @@ def curate_club_dimension(conn: duckdb.DuckDBPyConnection, dimension: ClubDimens
         pl.col("transfermarkt_id").cast(pl.Int64),
     )
     validated = DimClubSchema.validate(frame)
-    _materialize(conn, "dim_club", validated)
+    _materialize(conn, "dim_club", validated, curated_at=curated_at)
     log.info("curate.club_dimension", rows=validated.height)
 
 
@@ -386,14 +420,18 @@ def build_team_match(matches: pl.DataFrame) -> pl.DataFrame:
     return MartTeamMatchSchema.validate(team_match)
 
 
-def curate_team_match(conn: duckdb.DuckDBPyConnection) -> None:
+def curate_team_match(
+    conn: duckdb.DuckDBPyConnection, *, curated_at: datetime | None = None
+) -> None:
     matches = conn.execute("SELECT * FROM stg_matches").pl()
     team_match = build_team_match(matches)
-    _materialize(conn, "mart_team_match", team_match)
+    _materialize(conn, "mart_team_match", team_match, curated_at=curated_at)
     log.info("curate.team_match", rows=team_match.height)
 
 
-def curate_club_season_membership(conn: duckdb.DuckDBPyConnection) -> None:
+def curate_club_season_membership(
+    conn: duckdb.DuckDBPyConnection, *, curated_at: datetime | None = None
+) -> None:
     matches = conn.execute(
         "SELECT season, home_team, away_team FROM "
         f"({latest_snapshot_sql('raw_footballdata_matches')})"
@@ -401,11 +439,16 @@ def curate_club_season_membership(conn: duckdb.DuckDBPyConnection) -> None:
     dimension = load_club_dimension()
     membership = build_club_season_membership(matches, dimension)
 
-    _materialize(conn, "stg_club_season", membership)
+    _materialize(conn, "stg_club_season", membership, curated_at=curated_at)
     log.info("curate.club_season_membership", rows=membership.height)
 
 
-def curate_matches(conn: duckdb.DuckDBPyConnection, dimension: ClubDimension | None = None) -> None:
+def curate_matches(
+    conn: duckdb.DuckDBPyConnection,
+    dimension: ClubDimension | None = None,
+    *,
+    curated_at: datetime | None = None,
+) -> None:
     """One row per (season, home team, away team) -- the natural key for a football-data
     row, since each pairing plays at a given ground exactly once a season. Starts from
     the latest snapshot, then keeps the most recently landed row per natural key as a
@@ -461,8 +504,8 @@ def curate_matches(conn: duckdb.DuckDBPyConnection, dimension: ClubDimension | N
     validated = StgMatchSchema.validate(curated)
     odds = build_odds_long(resolved)
 
-    _materialize(conn, "stg_matches", validated)
-    _materialize(conn, "stg_odds", odds)
+    _materialize(conn, "stg_matches", validated, curated_at=curated_at)
+    _materialize(conn, "stg_odds", odds, curated_at=curated_at)
     coverage = validated.group_by("benchmark_source").len().sort("benchmark_source").to_dicts()
     log.info(
         "curate.matches",
@@ -473,8 +516,24 @@ def curate_matches(conn: duckdb.DuckDBPyConnection, dimension: ClubDimension | N
     log.info("curate.odds", rows=odds.height)
 
 
+def derive_season_from_kickoffs(
+    fixtures: pl.DataFrame, *, config: Settings = settings, fallback_today: date | None = None
+) -> str:
+    """The season label for a live FPL fixture list, derived from its own earliest
+    kickoff (story B-10) rather than the wall clock: a curate run in June or early July
+    would otherwise stamp next season's fixtures with last season's label. Falls back
+    to today's date only when every kickoff is unset, which real FPL data never does --
+    the fixture list always has at least gameweek 1's kickoff before its own deadline."""
+    earliest = fixtures.select(pl.col("kickoff_time").min()).item()
+    anchor = earliest.date() if earliest is not None else (fallback_today or date.today())
+    return season_label(config.current_season_start_year(today=anchor))
+
+
 def curate_fixtures(
-    conn: duckdb.DuckDBPyConnection, dimension: ClubDimension | None = None
+    conn: duckdb.DuckDBPyConnection,
+    dimension: ClubDimension | None = None,
+    *,
+    curated_at: datetime | None = None,
 ) -> None:
     dimension = dimension or load_club_dimension()
     fixtures = conn.execute(
@@ -500,7 +559,7 @@ def curate_fixtures(
     away_club_ids = dimension.resolve(
         [id_to_code[i] for i in fixtures["away_team_id"].to_list()], "fpl"
     )
-    season = season_label(settings.current_season_start_year())
+    season = derive_season_from_kickoffs(fixtures)
 
     curated = fixtures.with_columns(
         pl.Series("home_club_id", home_club_ids),
@@ -521,8 +580,41 @@ def curate_fixtures(
     _assert_no_self_fixtures(curated)
     validated = StgFixtureSchema.validate(curated)
 
-    _materialize(conn, "stg_fixtures", validated)
-    log.info("curate.fixtures", rows=validated.height)
+    _materialize(conn, "stg_fixtures", validated, curated_at=curated_at)
+    log.info("curate.fixtures", rows=validated.height, season=season)
+
+
+class StgGameweekSchema(pa.DataFrameModel):
+    gameweek: Series[int] = pa.Field(ge=1, unique=True)
+    name: Series[str]
+    deadline_time: Series[pl.Datetime] = pa.Field(dtype_kwargs={"time_zone": "UTC"})
+    finished: Series[bool]
+    is_previous: Series[bool]
+    is_current: Series[bool]
+    is_next: Series[bool]
+
+    class Config:
+        strict = True
+        coerce = True
+
+
+def curate_gameweeks(
+    conn: duckdb.DuckDBPyConnection, *, curated_at: datetime | None = None
+) -> None:
+    """FPL's own gameweek calendar (story B-10), typed and deduped from the latest
+    snapshot. Absent entirely on a clean clone that has not run `ingest fpl` yet --
+    skipped with a warning, same tolerance `_understat_xg` has for a missing source."""
+    if not _has_relation(conn, "raw_fpl_events"):
+        log.warning("curate.gameweeks_skipped_no_events_snapshot")
+        return
+    events = conn.execute(
+        "SELECT gameweek, name, deadline_time, finished, is_previous, is_current, is_next "
+        f"FROM ({latest_snapshot_sql('raw_fpl_events')})"
+    ).pl()
+    validated = StgGameweekSchema.validate(events)
+    _materialize(conn, "stg_gameweeks", validated, curated_at=curated_at)
+    current = validated.filter(pl.col("is_current"))["gameweek"].to_list()
+    log.info("curate.gameweeks", rows=validated.height, current_gameweek=current)
 
 
 def reconcile_current_season(conn: duckdb.DuckDBPyConnection) -> dict[str, int]:
@@ -571,12 +663,67 @@ def reconcile_current_season(conn: duckdb.DuckDBPyConnection) -> dict[str, int]:
     return counts
 
 
-def curate_all(conn: duckdb.DuckDBPyConnection) -> None:
+# raw view -> the curated tables that read it, for the manifest (story B-11).
+_TABLE_SOURCES: dict[str, tuple[str, ...]] = {
+    "stg_club_season": ("raw_footballdata_matches",),
+    "stg_matches": ("raw_footballdata_matches", "raw_understat_team_match"),
+    "stg_odds": ("raw_footballdata_matches",),
+    "stg_fixtures": ("raw_fpl_fixtures", "raw_fpl_teams"),
+    "stg_gameweeks": ("raw_fpl_events",),
+    "mart_team_match": (),  # derived from stg_matches, already curated
+    "dim_club": (),  # from club_aliases.yaml, not a raw snapshot
+}
+
+
+def _snapshot_name(conn: duckdb.DuckDBPyConnection, view: str) -> str | None:
+    """The directory name of the snapshot currently behind `view` (e.g.
+    '20260916T192156Z'), or None if the view does not exist (that source has not been
+    ingested yet)."""
+    if not _has_relation(conn, view):
+        return None
+    row = conn.execute(f"SELECT max(f) FROM (SELECT DISTINCT filename AS f FROM {view})").fetchone()
+    if row is None or row[0] is None:
+        return None
+    return Path(row[0]).parent.name
+
+
+def build_curate_manifest(
+    conn: duckdb.DuckDBPyConnection, *, curated_at: datetime
+) -> dict[str, Any]:
+    """Row counts and raw-snapshot lineage for every table this curate run produced.
+    Re-queries the same views curate_all itself read, so it is safe to call after the
+    fact (as `curate_all` does) rather than threading a lineage object through every
+    curate_* function -- the raw views cannot have changed mid-run."""
+    snapshots = {
+        view: _snapshot_name(conn, view) for views in _TABLE_SOURCES.values() for view in views
+    }
+
+    tables: dict[str, Any] = {}
+    for table, views in _TABLE_SOURCES.items():
+        if not _has_relation(conn, table):
+            continue
+        rows = conn.execute(f"SELECT count(*) FROM {table}").fetchone()
+        sources: dict[str, str | None] = (
+            {"club_aliases.yaml": None} if table == "dim_club" else {v: snapshots[v] for v in views}
+        )
+        tables[table] = {"rows": int(rows[0]) if rows else 0, "sources": sources}
+
+    return {"curated_at": curated_at.isoformat(), "tables": tables}
+
+
+def curate_all(conn: duckdb.DuckDBPyConnection) -> dict[str, Any]:
+    """Runs every curate_* step against the latest raw snapshots and returns the
+    lineage manifest (also written to disk by the CLI, story B-11)."""
     conn.execute("DROP TABLE IF EXISTS mart_fixtures")  # renamed stg_fixtures (story B-09)
+    curated_at = datetime.now(UTC)
     dimension = load_club_dimension()
-    curate_club_dimension(conn, dimension)
-    curate_club_season_membership(conn)
-    curate_matches(conn, dimension)
-    curate_fixtures(conn, dimension)
-    curate_team_match(conn)
+    curate_club_dimension(conn, dimension, curated_at=curated_at)
+    curate_club_season_membership(conn, curated_at=curated_at)
+    curate_matches(conn, dimension, curated_at=curated_at)
+    curate_fixtures(conn, dimension, curated_at=curated_at)
+    curate_gameweeks(conn, curated_at=curated_at)
+    curate_team_match(conn, curated_at=curated_at)
     reconcile_current_season(conn)
+    manifest = build_curate_manifest(conn, curated_at=curated_at)
+    log.info("curate.manifest", tables={t: v["rows"] for t, v in manifest["tables"].items()})
+    return manifest

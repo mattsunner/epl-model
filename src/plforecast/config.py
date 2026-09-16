@@ -30,6 +30,17 @@ class Settings(BaseSettings):
 
     understat_league: str = "ENG-Premier League"
 
+    # Model hyperparameters, set by `plforecast tune` (story C-03) and recorded in
+    # docs/evaluation/tuning-*.json. Never assumed in model code: every model takes
+    # them as explicit constructor arguments; these are only the pipeline's defaults.
+    # Tuned 16 September 2026 on 2015/16-2021/22, reported on 2022/23-2025/26
+    # (docs/evaluation.md, "Hyperparameter tuning"). Dixon and Coles' 1997 value for xi
+    # turned out to be the interior optimum for the goals model.
+    dixon_coles_xi: float = 0.0018
+    xg_rates_xi: float = 0.005
+    xg_rates_blend: float = 0.75
+    xg_rates_rho: float = 0.0  # grid flat within 0.0004 RPS; parsimony rule keeps it off
+
     @property
     def raw_dir(self) -> Path:
         return self.data_dir / "raw"

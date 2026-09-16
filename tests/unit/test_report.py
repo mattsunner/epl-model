@@ -55,9 +55,10 @@ def test_primary_metrics_use_identical_rows_for_models_and_market():
     # (round 1) so round 1 is warm-up-excluded. Intersection = rounds 3-6 = 8 matches.
     matches = _matches(6, odds_from_round=2)
 
-    report = build_report(matches, {"stub": _StubModel}, min_train_matches=2)
+    report = build_report(matches, {"stub": _StubModel}, min_train_matches=2, season_level=False)
 
     primary = {row["model"]: row for row in report["primary"]}
+    assert report["shipped_model"] == "stub"
     assert report["coverage"]["intersection"] == 8
     assert {row["n"] for row in primary.values()} == {8}
     secondary = {row["model"]: row for row in report["secondary_full_set"]}
@@ -70,7 +71,7 @@ def test_primary_metrics_use_identical_rows_for_models_and_market():
 
 def test_report_reconciles_exactly_and_serialises(tmp_path):
     matches = _matches(4)
-    report = build_report(matches, {"stub": _StubModel}, min_train_matches=2)
+    report = build_report(matches, {"stub": _StubModel}, min_train_matches=2, season_level=False)
 
     scored = report["secondary_full_set"][0]["n"]
     assert (

@@ -9,6 +9,7 @@ import polars as pl
 import typer
 
 from plforecast.logging import configure_logging
+from plforecast.models.base import MatchModel
 from plforecast.storage.db import connect, migrate
 
 app = typer.Typer(no_args_is_help=True)
@@ -61,12 +62,12 @@ def evaluate(
     out_dir: Annotated[
         Path, typer.Option(help="Where metrics.json and calibration.csv are written.")
     ] = Path("docs/evaluation"),
-    xi: Annotated[
-        float, typer.Option(help="Dixon-Coles decay rate (story C-03 tunes this).")
-    ] = 0.0018,
     min_train_matches: Annotated[
         int, typer.Option(help="Warm-up before the first test split.")
     ] = 100,
+    season_level: Annotated[
+        bool, typer.Option(help="Also run the season-level evaluation (adds ~1 min).")
+    ] = True,
 ) -> None:
     """Walk-forward backtest Poisson and Dixon-Coles against the market baseline over
     stg_matches (design.md section 8), scoring everything on identical rows. Prints the
@@ -74,26 +75,21 @@ def evaluate(
     import structlog
 
     from plforecast.evaluate.report import build_report, format_table, write_report
-    from plforecast.models.dixon_coles import DixonColesModel
-    from plforecast.models.poisson import PoissonModel
 
     log = structlog.get_logger()
-    conn = connect()
-    matches = conn.execute(
-        "SELECT match_id, season, date, home_club_id, away_club_id, home_goals, "
-        "away_goals, result, benchmark_home_odds, benchmark_draw_odds, benchmark_away_odds, "
-        "benchmark_source "
-        "FROM stg_matches WHERE season != (SELECT max(season) FROM stg_matches) "
-        "ORDER BY date"
-    ).pl()
-    conn.close()
-
+    matches = _completed_season_matches()
     log.info("evaluate.window", seasons=matches["season"].n_unique(), matches=matches.height)
+
+    tuning = {}
+    for path in sorted(out_dir.glob("tuning-*.json")):
+        tuning[path.stem.removeprefix("tuning-")] = json.loads(path.read_text())
 
     report = build_report(
         matches,
-        {"poisson": PoissonModel, "dixon-coles": lambda: DixonColesModel(xi=xi)},
+        _model_factories(),
         min_train_matches=min_train_matches,
+        season_level=season_level,
+        tuning=tuning,
     )
     written = write_report(report, out_dir)
 
@@ -106,6 +102,107 @@ def evaluate(
     typer.echo(f"coverage: {json.dumps(report['coverage'], default=str)}")
     written.append(_render_evaluation(out_dir))
     typer.echo(f"written: {', '.join(str(path) for path in written)}")
+
+
+def _completed_season_matches() -> pl.DataFrame:
+    """Every stg_matches column the models and the benchmark need, completed seasons
+    only (the in-progress season's results are not final)."""
+    conn = connect()
+    matches = conn.execute(
+        "SELECT match_id, season, date, home_club_id, away_club_id, home_goals, away_goals, "
+        "home_xg, away_xg, result, benchmark_home_odds, benchmark_draw_odds, "
+        "benchmark_away_odds, benchmark_source "
+        "FROM stg_matches WHERE season != (SELECT max(season) FROM stg_matches) "
+        "ORDER BY date"
+    ).pl()
+    conn.close()
+    return matches
+
+
+def _model_factories() -> dict[str, Callable[[], MatchModel]]:
+    """The model ladder as configured (config.py holds the tuned hyperparameters)."""
+    from plforecast.config import settings
+    from plforecast.models.dixon_coles import DixonColesModel
+    from plforecast.models.poisson import PoissonModel
+    from plforecast.models.xg_rates import XGRateModel
+
+    return {
+        "poisson": PoissonModel,
+        "dixon-coles": lambda: DixonColesModel(xi=settings.dixon_coles_xi),
+        "xg-rates": lambda: XGRateModel(
+            xi=settings.xg_rates_xi, blend=settings.xg_rates_blend, rho=settings.xg_rates_rho
+        ),
+    }
+
+
+@app.command()
+def tune(
+    model: Annotated[str, typer.Option(help="dixon-coles or xg-rates")] = "dixon-coles",
+    parameter: Annotated[str, typer.Option(help="xi, blend or rho")] = "xi",
+    grid: Annotated[
+        str, typer.Option(help="Comma-separated values to try.")
+    ] = "0,0.0005,0.001,0.0018,0.003,0.005",
+    select_through_season: Annotated[
+        str, typer.Option(help="Last season used for selection; later seasons report.")
+    ] = "2021/22",
+    out_dir: Annotated[Path, typer.Option(help="Where tuning-<model>-<param>.json goes.")] = Path(
+        "docs/evaluation"
+    ),
+    null_value: Annotated[
+        float | None,
+        typer.Option(
+            help="Value that switches the parameter off; preferred when within tolerance."
+        ),
+    ] = None,
+    tolerance: Annotated[
+        float, typer.Option(help="RPS tolerance for the parsimony rule.")
+    ] = 0.0005,
+) -> None:
+    """Grid-search one hyperparameter by walk-forward backtest with disjoint selection
+    and reporting seasons (story C-03). Writes the grid; set the chosen value in
+    config.py (or the PLFORECAST_* env var) and re-run `evaluate`."""
+    from plforecast.config import settings
+    from plforecast.evaluate.tuning import tune_parameter
+    from plforecast.models.dixon_coles import DixonColesModel
+    from plforecast.models.xg_rates import XGRateModel
+
+    values = [float(v) for v in grid.split(",")]
+
+    def make_factory(value: float) -> Callable[[], MatchModel]:
+        if model == "dixon-coles" and parameter == "xi":
+            return lambda: DixonColesModel(xi=value)
+        if model == "xg-rates":
+            kwargs = {
+                "xi": settings.xg_rates_xi,
+                "blend": settings.xg_rates_blend,
+                "rho": settings.xg_rates_rho,
+            }
+            if parameter not in kwargs:
+                raise typer.BadParameter(f"xg-rates has no parameter {parameter!r}")
+            kwargs[parameter] = value
+            return lambda: XGRateModel(**kwargs)
+        raise typer.BadParameter(f"cannot tune {parameter!r} on {model!r}")
+
+    matches = _completed_season_matches()
+    result = tune_parameter(
+        matches,
+        make_factory,
+        values,
+        parameter=parameter,
+        select_through_season=select_through_season,
+        null_value=null_value,
+        tolerance=tolerance,
+    )
+    out_dir.mkdir(parents=True, exist_ok=True)
+    path = out_dir / f"tuning-{model}-{parameter}.json"
+    path.write_text(json.dumps(result, indent=2) + "\n")
+    for row in result["grid"]:
+        typer.echo(
+            f"{parameter}={row['value']:<8} select rps={row['select_rps']:.4f} "
+            f"(n={row['select_n']})  report rps={row['report_rps']:.4f} (n={row['report_n']})"
+        )
+    note = " (parsimony rule)" if result["parsimony_applied"] else ""
+    typer.echo(f"selected {parameter}={result['selected']}{note}; written {path}")
 
 
 def _render_evaluation(report_dir: Path, target: Path = Path("docs/evaluation.md")) -> Path:
@@ -132,8 +229,13 @@ def render_evaluation(
 
 @app.command()
 def forecast(
-    model: Annotated[str, typer.Option(help="poisson or dixon-coles")] = "dixon-coles",
-    xi: Annotated[float, typer.Option(help="Dixon-Coles decay rate.")] = 0.0018,
+    model: Annotated[
+        str,
+        typer.Option(
+            help="poisson, dixon-coles, xg-rates, or 'shipped' (the best model in "
+            "docs/evaluation/metrics.json, falling back to dixon-coles)."
+        ),
+    ] = "shipped",
     simulations: Annotated[int, typer.Option(help="Simulated seasons.")] = 50_000,
     seed: Annotated[int, typer.Option(help="Random seed, recorded in the artifact.")] = 20262027,
     artifacts_dir: Annotated[Path, typer.Option(help="Where the documents go.")] = Path(
@@ -161,18 +263,26 @@ def forecast(
     )
     from plforecast.config import settings
     from plforecast.entities.clubs import load_club_dimension
-    from plforecast.models.base import MatchModel, UnknownClubError
-    from plforecast.models.dixon_coles import DixonColesModel
-    from plforecast.models.poisson import PoissonModel
+    from plforecast.features.priors import (
+        build_prior,
+        build_survival_zone_reference,
+        needs_prior,
+        prior_pseudo_matches,
+    )
+    from plforecast.models.base import UnknownClubError
     from plforecast.simulate.competition import PREMIER_LEAGUE
     from plforecast.simulate.engine import simulate_season
     from plforecast.simulate.tiebreak import PremierLeagueTiebreaks
 
     log = structlog.get_logger()
-    factories: dict[str, Callable[[], MatchModel]] = {
-        "poisson": PoissonModel,
-        "dixon-coles": lambda: DixonColesModel(xi=xi),
-    }
+    factories = _model_factories()
+    if model == "shipped":
+        metrics_path = Path("docs/evaluation/metrics.json")
+        model = (
+            json.loads(metrics_path.read_text()).get("shipped_model", "dixon-coles")
+            if metrics_path.exists()
+            else "dixon-coles"
+        )
     if model not in factories:
         raise typer.BadParameter(f"unknown model {model!r}; choose from {sorted(factories)}")
 
@@ -182,29 +292,78 @@ def forecast(
         "home_goals, away_goals, finished FROM stg_fixtures ORDER BY kickoff_time, fixture_id"
     ).pl()
     history = conn.execute(
-        "SELECT season, date, home_club_id, away_club_id, home_goals, away_goals "
-        "FROM stg_matches ORDER BY date"
+        "SELECT match_id, season, date, home_club_id, away_club_id, home_goals, away_goals, "
+        "home_xg, away_xg, result FROM stg_matches ORDER BY date"
     ).pl()
     conn.close()
 
     season_label_ = str(fixtures["season"][0])
+    generated_at = now_utc()
+    generated_date = generated_at.date()
     played = fixtures.filter(pl.col("finished"))
     remaining = fixtures.filter(~pl.col("finished"))
 
     # Training data: history plus current-season results FPL has that football-data
     # has not published yet (story B-07: FPL is authoritative for the live season).
     fpl_results = played.select(
+        (
+            pl.lit(season_label_.replace("/", "-") + "-")
+            + pl.col("home_club_id")
+            + "-"
+            + pl.col("away_club_id")
+        ).alias("match_id"),
         pl.lit(season_label_).alias("season"),
         pl.col("kickoff_time").dt.date().alias("date"),
         "home_club_id",
         "away_club_id",
         "home_goals",
         "away_goals",
+        pl.lit(None, dtype=pl.Float64).alias("home_xg"),  # Understat lags FPL by a day
+        pl.lit(None, dtype=pl.Float64).alias("away_xg"),
+        pl.when(pl.col("home_goals") > pl.col("away_goals"))
+        .then(pl.lit("H"))
+        .when(pl.col("home_goals") < pl.col("away_goals"))
+        .then(pl.lit("A"))
+        .otherwise(pl.lit("D"))
+        .alias("result"),
     )
     missing_from_history = fpl_results.join(
         history, on=["season", "home_club_id", "away_club_id"], how="anti"
     )
     training = pl.concat([history, missing_from_history]).sort("date")
+
+    # Promoted-club prior (ADR 0006, story C-08): a club in the fixture list with less
+    # than a season of results gets pseudo-observations built from the survival-zone
+    # reference, so it is rated from evidence rather than a handful of matches.
+    completed = training.filter(pl.col("season") != season_label_)
+    fixture_clubs = sorted(set(fixtures["home_club_id"]) | set(fixtures["away_club_id"]))
+    # Count each club's evidence with the model's own decay rate (Poisson has none).
+    decay_xi = float(getattr(factories[model](), "xi", 0.0))
+    needing_prior = [
+        club
+        for club in fixture_clubs
+        if needs_prior(club, training, as_of=generated_date, xi=decay_xi)
+    ]
+    if needing_prior:
+        reference = build_survival_zone_reference(completed)
+        pseudo = [
+            prior_pseudo_matches(
+                build_prior(club, reference),
+                opponents=fixture_clubs,
+                season=season_label_,
+                as_of=generated_date,
+                seed=seed,
+            )
+            for club in needing_prior
+        ]
+        training = pl.concat([training, *pseudo], how="vertical_relaxed").sort("date")
+        log.info(
+            "forecast.promoted_club_prior",
+            clubs=needing_prior,
+            pseudo_matches=sum(p.height for p in pseudo),
+            reference_observations=reference.n_observations,
+            reference_mean_points=round(reference.mean_points, 1),
+        )
     log.info(
         "forecast.training",
         rows=training.height,
@@ -218,8 +377,8 @@ def forecast(
             fitted.scoreline_matrix(row[0], row[1], max_goals)
     except UnknownClubError as exc:
         raise typer.Exit(code=1) from typer.BadParameter(
-            f"{exc}. A club with no results at all cannot be rated yet (story C-08 wires "
-            "the promoted-club prior in); re-run after its first match."
+            f"{exc}. The promoted-club prior should have covered this club; check "
+            "needs_prior() and the fixture list."
         )
 
     finished_by_gw = played.group_by("gameweek").len().rename({"len": "finished"})
@@ -253,7 +412,6 @@ def forecast(
         sources=snapshot_provenance(settings.raw_dir),
         package_versions=package_versions(),
     )
-    generated_at = now_utc()
     dimension = load_club_dimension()
     display_names = dict(
         zip(

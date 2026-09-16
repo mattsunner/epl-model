@@ -64,12 +64,17 @@ def _report():
             for m in ("poisson", "dixon-coles", "market (shin)", "market (multiplicative)")
         ],
         "calibration": {"dixon-coles": cal},
+        "shipped_model": "dixon-coles",
+        "season_level": {"simulations": 100, "summary": [], "scores": []},
+        "tuning": {},
     }
 
 
 def test_render_markdown_computes_the_verdicts_from_the_numbers():
     md = render_markdown(_report())
-    assert "beats the Poisson floor on held-out RPS (0.2000 < 0.2100) and ships" in md
+    assert "`DixonColesModel` has the best held-out RPS of the non-market models" in md
+    assert "and ships" in md
+    assert "No tuning run has been recorded" in md
     assert "Neither model beats the market" in md
     assert "gap to the Shin de-vigged benchmark is +0.0100" in md
     assert "Stretch target not met" in md
@@ -80,7 +85,7 @@ def test_render_markdown_computes_the_verdicts_from_the_numbers():
 def test_render_readme_table_lists_floor_shipped_and_market():
     table = render_readme_table(_report())
     assert table.splitlines()[2].startswith("| `PoissonModel` (floor) | 0.2100 |")
-    assert len(table.splitlines()) == 5
+    assert len(table.splitlines()) == 5  # header, rule, two models, market
 
 
 def test_render_round_trips_through_json(tmp_path: Path):

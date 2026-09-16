@@ -30,17 +30,24 @@ Sunderland near-certain relegation.
   reporting mean points alongside as a cross-check against the 22-season figure of 33.8
   points for 18th place. Option 2 is structurally supported (`external_rating`,
   `external_weight`) and becomes live when ClubElo is ingested (story C-16).
-- **Promoted clubs are not interchangeable.** A club with a recent top-flight season
-  (Ipswich, 2024/25) is modelled from that history; `needs_prior` is the gate.
-- **Delivery into the model layer**: as weighted pseudo-observations appended to the
-  fit frame, which penaltyblog's `weights` already supports, rather than waiting for the
-  hierarchical model (story C-08). The number and weight of pseudo-matches is derived
-  from the prior's width.
+- **Promoted clubs are not interchangeable.** `needs_prior` is the gate, and it counts
+  evidence the way the models weight it: each past match counts `exp(-xi * days)`. A
+  club with a recent top-flight season (Ipswich, 2024/25) keeps its data and is shrunk
+  toward the prior only in proportion to how much that data has decayed; a club whose
+  only top-flight season was years ago (Hull, 2016/17) is treated as nearly data-free,
+  which it is under decay. The threshold is half a season of effective matches.
+- **Delivery into the model layer**: as pseudo-observations appended to the fit frame
+  (story C-08), rather than waiting for the hierarchical model. The count is the
+  prior's effective sample size, `mean / std^2` averaged over the four rate fields and
+  clamped to 4 to 38 matches. Pseudo-matches are played against the *real* clubs in the
+  fixture list, not a phantom opponent: a phantom played only by the promoted club is
+  not identifiable from it, and in practice the fit put the whole prior into the
+  phantom's parameters and left the club's untouched.
 
 ## Consequences
 
-- Until C-08 lands, a promoted club is rated only from whatever matches it has played,
-  and its projection is the model's failure mode. The README says so and the first
-  committed forecast shows it (Coventry, 4.8 expected points after four matches).
+- Before C-08 landed, a promoted club was rated only from whatever matches it had
+  played: the first committed forecast gave Coventry 4.8 expected points after four
+  defeats. With the prior it is a survival-zone team until its results say otherwise.
 - The recency half-life on the prior mean (design.md 15, question 2) needs the
   season-level evaluation harness (story C-07) to be tuned honestly.

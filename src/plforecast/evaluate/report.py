@@ -27,6 +27,7 @@ from plforecast.evaluate.backtest import BacktestResult, run_backtest
 from plforecast.evaluate.calibration import calibration_by_outcome
 from plforecast.evaluate.market import market_probabilities
 from plforecast.evaluate.metrics import brier_score, log_loss, outcome_index, rps
+from plforecast.evaluate.season import evaluate_season_level, summarise_season_level
 from plforecast.models.base import MatchModel
 
 MATCH_KEY = ["season", "date", "home_club_id", "away_club_id"]
@@ -58,12 +59,22 @@ def _by_season(frame: pl.DataFrame) -> list[dict[str, Any]]:
     return sorted(rows, key=lambda r: str(r["season"]))
 
 
+def shipped_model(primary: list[dict[str, Any]]) -> str:
+    """The non-market model with the lowest primary RPS: what the pipeline ships
+    (design.md 6.2's gate), computed rather than asserted."""
+    candidates = [row for row in primary if not str(row["model"]).startswith("market")]
+    return str(min(candidates, key=lambda row: row["rps"])["model"])
+
+
 def build_report(
     matches: pl.DataFrame,
     model_factories: Mapping[str, Callable[[], MatchModel]],
     *,
     min_train_matches: int = 100,
     calibration_model: str | None = None,
+    season_level: bool = True,
+    season_level_simulations: int = 5_000,
+    tuning: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """`matches` shaped like stg_matches (benchmark_* columns included), already
     restricted to the evaluation window. Runs every model through the shared
@@ -111,8 +122,15 @@ def build_report(
         outcomes = outcome_index(frame["result"].to_list())
         calibration[name] = calibration_by_outcome(probs, outcomes).to_dicts()
 
+    season_scores = (
+        evaluate_season_level(matches, model_factories, n_simulations=season_level_simulations)
+        if season_level
+        else None
+    )
+
     seasons = sorted(matches["season"].unique().to_list())
     return {
+        "shipped_model": shipped_model(primary),
         "generated_at": datetime.now(UTC).isoformat(timespec="seconds"),
         "window": {
             "first_season": seasons[0],
@@ -139,6 +157,12 @@ def build_report(
         "secondary_full_set": secondary,
         "by_season": by_season,
         "calibration": calibration,
+        "season_level": {
+            "simulations": season_level_simulations,
+            "summary": summarise_season_level(season_scores) if season_scores is not None else [],
+            "scores": season_scores.to_dicts() if season_scores is not None else [],
+        },
+        "tuning": dict(tuning or {}),
     }
 
 

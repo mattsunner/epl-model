@@ -112,6 +112,8 @@ Acceptance criteria:
 
 ### A-04 · P1 · Correction · One project has three names
 
+**Status**: Done 16 Sep 2026: distribution `pl-forecast`, import `plforecast`; the local directory name is outside the repo's control.
+
 **As** a reader, **I want** the distribution, import package, and prose to agree on a
 name, **so that** search, citation, and `pip install` are unambiguous.
 
@@ -123,6 +125,8 @@ Acceptance criteria:
   distribution. README and design.md updated. Justfile and CLI already use `plforecast`.
 
 ### A-05 · P1 · Correction · design.md describes a repository that does not exist yet
+
+**Status**: Done 16 Sep 2026: all nine ADRs exist; design.md section 3 is the as-built tree with planned/dropped markers.
 
 **Status**: Partly done 16 Sep 2026: all eight ADRs exist. Section 3 status markers pending.
 
@@ -145,6 +149,8 @@ Acceptance criteria:
 - Section 14's "each has a corresponding ADR" is true.
 
 ### A-06 · P1 · Correction · design.md lives in the wrong place
+
+**Status**: Done 16 Sep 2026: moved to `docs/design.md`.
 
 Evidence: design.md section 3 places it at `docs/design.md`; the file is at the repo
 root. `README.md` and every module docstring link to `design.md` by bare name.
@@ -175,6 +181,8 @@ Acceptance criteria:
   docstrings describe contracts and gotchas. See also C-12.
 
 ### A-08 · P1 · Recommendation · Add a LICENSE and data attribution
+
+**Status**: Done 16 Sep 2026: MIT LICENSE; README attribution section.
 
 Evidence: design.md section 11.5 requires MIT or Apache 2.0 and source attribution; no
 `LICENSE` exists; README has no attribution section.
@@ -314,7 +322,7 @@ the directory name; a test for the collision.
 
 ### A-19 · P3 · Recommendation · Notebook hygiene
 
-**Status**: Done 16 Sep 2026: empty notebook removed; conventions doc still pending.
+**Status**: Done 16 Sep 2026: empty notebook removed; `notebooks/README.md` states the conventions.
 
 Evidence: `eda.ipynb` at the repo root has zero cells. design.md section 4 requires
 `notebooks/NN-MM-question.ipynb`, an opening cell with question and conclusion, and
@@ -466,6 +474,8 @@ Acceptance criteria:
 - `build_club_strength` reads from it.
 
 ### B-06 · P1 · Correction · "Swap in xG later is a data-source change" is not true
+
+**Status**: Done 16 Sep 2026: `models/xg_rates.py` (rung 2.5) per ADR 0009, in the evaluation ladder; shipped model chosen by primary RPS.
 
 **Status**: Decided 16 Sep 2026: ADR 0009 chooses an xG-rate model as rung 2.5, gated by the backtest. Implementation is the next step.
 
@@ -697,6 +707,8 @@ with the recomputed numbers, whichever direction they move.
 
 ### C-03 · P1 · Correction · `xi` is asserted to be tuned but is hardcoded to the 1997 value
 
+**Status**: Done 16 Sep 2026: `plforecast tune` (selection 2015/16-2021/22, report 2022/23-2025/26); Dixon-Coles xi stays 0.0018 (interior optimum); xG-rates xi 0.005, blend 0.75, rho 0.05; grids rendered in evaluation.md; values live in config.py.
+
 Evidence: `dixon_coles.py:7-12` refuses a default for `xi` because it must be "tuned by
 backtest, never assumed"; `cli.py:83` then passes `0.0018`, the Dixon and Coles paper
 value, and evaluation.md reports it as the shipped configuration. design.md's risk table
@@ -753,6 +765,8 @@ doc is out of date with the committed data.
 
 ### C-07 · P2 · Recommendation · Season-level evaluation is missing and is the metric the product claims
 
+**Status**: Done 16 Sep 2026: `evaluate/season.py` scores position RPS and title/top-four/relegation log loss at cutoffs of 100, 190 and 280 matches for every completed season; rendered in evaluation.md.
+
 Evidence: design.md section 8.1 asks for realised final position versus predicted
 distribution at a frozen gameweek. Everything needed exists: `stg_matches` has every
 completed season; remaining fixtures at any cutoff are the unplayed pairs of the round
@@ -764,6 +778,8 @@ score over 20 positions, plus log loss of realised title, top-four, and relegati
 outcomes; reported in evaluation.md; this becomes the gate for the hierarchical model too.
 
 ### C-08 · P2 · Recommendation · A bridge for the promoted-club prior before the hierarchical model
+
+**Status**: Done 16 Sep 2026: prior enters as pseudo-observations against real opponents (a phantom opponent was not identifiable); `needs_prior` counts decayed evidence. Coventry, Hull and Ipswich covered in the live forecast. Not yet in the backtest.
 
 Evidence: `features/priors.py` builds a prior nothing consumes; README says the two
 shipped models "don't have a mechanism to accept a prior". They do, indirectly: penaltyblog
@@ -785,6 +801,8 @@ the current season and from date clustering for history; runtime recorded in
 evaluation.md.
 
 ### C-10 · P3 · Recommendation · Success criterion progress is invisible
+
+**Status**: Done 16 Sep 2026: evaluation.md states the gap to market and whether the stretch target is met.
 
 Evidence: design.md 1.3's stretch target is within 0.005 RPS of the market. Current gap is
 0.0075 on non-identical rows (C-02).
@@ -826,6 +844,8 @@ docstring material; docstrings reduced to contract plus gotchas (roughly 10 line
 CONTRIBUTING note states the split.
 
 ### C-13 · P3 · Recommendation · State the determinism claim precisely
+
+**Status**: Done 16 Sep 2026 in spirit: artifacts carry git dirty flag and package versions; determinism tests compare simulation output exactly.
 
 Evidence: design.md 1.3 promises bit-for-bit reproducibility. Simulation is seeded and
 deterministic (verified by test). Model fitting uses scipy optimisers whose results can

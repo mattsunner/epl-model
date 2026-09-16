@@ -83,120 +83,105 @@ Each boundary is a contract with a schema. No layer reaches past its neighbour.
 
 ## 3. Repository layout
 
+As built on 16 September 2026. Entries marked *planned* do not exist yet; entries marked *dropped* were superseded by a decision recorded in the ADR named.
+
 ```
 pl-forecast/
 ├── README.md
-├── LICENSE
+├── LICENSE                        # MIT
 ├── pyproject.toml
 ├── justfile
-├── .pre-commit-config.yaml
+├── .pre-commit-config.yaml        # local hooks running the uv toolchain (ADR 0003)
 ├── .gitignore
+├── stories.md                     # review backlog with status lines
 │
 ├── docs/
 │   ├── design.md                  # this document
 │   ├── data-sources.md            # source inventory, licensing, gotchas
-│   ├── methodology.md             # model specification and maths
-│   ├── evaluation.md              # scoring rules, backtest protocol, results
-│   ├── model-card.md              # intended use, limitations, known failure modes
-│   └── adr/
-│       ├── 0001-two-stage-architecture.md
-│       ├── 0002-duckdb-as-analytical-store.md
-│       ├── 0003-notebook-boundary.md
-│       ├── 0004-forecast-artifact-contract.md
-│       ├── 0005-frontend-static-publishing.md
-│       ├── 0006-promoted-club-priors.md
-│       ├── 0007-market-baseline-and-devig.md
-│       └── 0008-multi-league-structural-allowances.md
+│   ├── evaluation.md              # rendered by `plforecast evaluate`; never hand-edited
+│   ├── evaluation/                # metrics.json, calibration.csv, tuning-*.json
+│   ├── methodology.md             # planned (story C-12)
+│   ├── model-card.md              # planned (story C-12)
+│   └── adr/                       # 0001-0009, all written
 │
-├── notebooks/
-│   ├── README.md                  # conventions, how to run
-│   ├── 01-eda/
-│   │   ├── 01-01-results-coverage.ipynb
-│   │   ├── 01-02-xg-vs-goals.ipynb
-│   │   └── 01-03-home-advantage-drift.ipynb
-│   ├── 02-cleaning/
-│   │   ├── 02-01-club-name-reconciliation.ipynb
-│   │   └── 02-02-odds-column-coverage.ipynb
-│   └── 03-prototypes/
-│       ├── 03-01-dixon-coles-scratch.ipynb
-│       └── 03-02-hierarchical-pymc.ipynb
+├── notebooks/                     # README.md only; conventions in ADR 0003
 │
 ├── src/plforecast/
-│   ├── __init__.py
-│   ├── config.py                  # pydantic-settings, single config surface
-│   ├── logging.py                 # structlog setup
+│   ├── config.py                  # pydantic-settings, single config surface, tuned hyperparameters
+│   ├── logging.py                 # structlog, JSON lines on stderr
 │   │
 │   ├── ingest/
-│   │   ├── base.py                # Source protocol, retry, rate limiting, caching
-│   │   ├── footballdata.py
-│   │   ├── understat.py
-│   │   ├── fpl.py
-│   │   ├── clubelo.py
-│   │   └── transfermarkt.py
+│   │   ├── base.py                # Source protocol, retry, rate limiting, TTL cache, snapshots
+│   │   ├── footballdata.py        # results + every closing-odds set (ADR 0007)
+│   │   ├── understat.py           # team-level xG via soccerdata; current season always live
+│   │   ├── fpl.py                 # fixtures, kickoff times, roster (stable `code`), availability
+│   │   ├── clubelo.py             # planned (story C-16)
+│   │   └── transfermarkt.py       # planned, v2 (story C-16)
 │   │
 │   ├── entities/
-│   │   ├── clubs.py               # canonical IDs, alias resolution, fuzzy fallback
+│   │   ├── clubs.py               # canonical IDs, strict alias resolution; fuzzy helper for notebooks only
 │   │   ├── competitions.py        # club-season membership bridge
 │   │   └── club_aliases.yaml      # hand-maintained, reviewed each season
 │   │
 │   ├── storage/
-│   │   ├── db.py                  # DuckDB connection, migrations
-│   │   ├── schema.sql
-│   │   └── curate.py              # raw -> curated transforms
+│   │   ├── db.py                  # DuckDB connection; raw views recreated on connect (ADR 0002)
+│   │   ├── migrations/            # table migrations only; none yet
+│   │   └── curate.py              # raw -> dim_club, stg_*, mart_team_match; cross-source checks
 │   │
 │   ├── features/
-│   │   ├── strength.py            # xG-based attack/defence inputs, time decay
-│   │   ├── schedule.py            # rest days, congestion, European involvement
-│   │   └── priors.py              # promoted-club prior construction
+│   │   ├── strength.py            # decayed attack/defence rates, goals or xG
+│   │   ├── schedule.py            # rest days from FPL kickoff times
+│   │   └── priors.py              # promoted-club prior and its pseudo-observations (ADR 0006)
 │   │
 │   ├── models/
-│   │   ├── base.py                # MatchModel protocol
-│   │   ├── poisson.py             # naive baseline
-│   │   ├── dixon_coles.py
-│   │   ├── hierarchical.py        # Bayesian hierarchical Poisson
-│   │   └── market.py              # de-vigged closing odds "model"
+│   │   ├── base.py                # MatchModel protocol, UnknownClubError
+│   │   ├── poisson.py             # rung 1, floor
+│   │   ├── dixon_coles.py         # rung 2
+│   │   ├── xg_rates.py            # rung 2.5 (ADR 0009)
+│   │   ├── hierarchical.py        # planned, rung 3
+│   │   └── market.py              # dropped: the benchmark is scored by evaluate/market.py, not a MatchModel
 │   │
 │   ├── simulate/
 │   │   ├── engine.py              # vectorised Monte Carlo
 │   │   ├── tiebreak.py            # TiebreakRules strategy, PL implementation
-│   │   └── competition.py         # league size, fixture count, promotion and relegation config
+│   │   ├── standings.py           # points/GD/GF from played matches
+│   │   └── competition.py         # league size, relegation and European spots
 │   │
 │   ├── evaluate/
 │   │   ├── metrics.py             # RPS, log loss, Brier
-│   │   ├── backtest.py            # walk-forward splitter
-│   │   └── calibration.py
+│   │   ├── backtest.py            # walk-forward splitter with exact coverage accounting
+│   │   ├── market.py              # de-vigged benchmark from the fallback chain
+│   │   ├── calibration.py         # pooled and per-outcome reliability curves
+│   │   ├── season.py              # season-level evaluation at frozen cutoffs
+│   │   ├── tuning.py              # grid search with disjoint selection/report seasons
+│   │   ├── report.py              # identical-rows comparison; the JSON report
+│   │   └── render.py              # docs/evaluation.md from the report
 │   │
 │   ├── artifacts/
-│   │   ├── schema.py              # pydantic forecast document model
-│   │   └── writer.py
+│   │   ├── schema.py              # pydantic forecast and fixtures documents (ADR 0004)
+│   │   └── writer.py              # documents from a simulation; provenance; latest + stamped files
 │   │
-│   └── cli.py                     # typer entry point
+│   └── cli.py                     # typer: ingest, curate, evaluate, tune, forecast, validate-artifacts
 │
 ├── tests/
 │   ├── unit/
-│   ├── integration/
-│   ├── fixtures/                  # small committed sample data
-│   └── golden/                    # seeded expected outputs
+│   ├── fixtures/                  # small committed sample data, observed name/code sets
+│   ├── integration/               # planned (story A-17)
+│   └── golden/                    # planned (story A-17); determinism is asserted in unit tests
 │
 ├── data/                          # gitignored except .gitkeep and MANIFEST.md
-│   ├── raw/
-│   ├── cache/
+│   ├── raw/                       # immutable timestamped snapshots per source
+│   ├── cache/                     # TTL HTTP cache; soccerdata cache
 │   └── pl.duckdb
 │
-├── artifacts/                     # committed, two files per published gameweek
-│   ├── 2026-27/
-│   │   ├── forecast-gw04.json     # table distribution, headline document
-│   │   ├── fixtures-gw04.json     # per-fixture predictions
-│   │   ├── forecast-latest.json
-│   │   └── fixtures-latest.json
-│   └── schema/
-│       ├── forecast-v1.schema.json
-│       └── fixtures-v1.schema.json
+├── artifacts/                     # committed
+│   ├── 2026-27/                   # forecast-gwNN.json, fixtures-gwNN.json, *-latest.json
+│   └── schema/                    # forecast-v1.schema.json, fixtures-v1.schema.json
 │
 └── .github/workflows/
-    ├── ci.yml                     # lint, type check, test
-    ├── docs.yml                   # build and link-check docs
-    └── artifact-validate.yml      # validate committed forecasts against schema
+    ├── ci.yml                     # lint, types, tests with coverage floor, artifact validation
+    ├── artifact-validate.yml      # on changes under artifacts/
+    └── docs.yml                   # planned
 ```
 
 ---
@@ -312,9 +297,10 @@ class MatchModel(Protocol):
 Implement in this order. Each must beat the one before it on held-out RPS or it does not ship.
 
 1. `poisson.PoissonModel`: independent Poisson, static team strengths. Floor.
-2. `dixon_coles.DixonColesModel`: low-score dependence correction plus exponential time decay. Decay parameter `xi` tuned by backtest, not assumed.
-3. `hierarchical.HierarchicalModel`: Bayesian hierarchical Poisson with partial pooling across clubs. Gives posterior uncertainty on team strength and handles promoted clubs and thin early-season data properly.
-4. `market.MarketModel`: not a model to beat but the benchmark to measure against.
+2. `dixon_coles.DixonColesModel`: low-score dependence correction plus exponential time decay. Decay parameter `xi` tuned by backtest, not assumed (`plforecast tune`; the 1997 value turned out to be the interior optimum).
+3. `xg_rates.XGRateModel` (rung 2.5, ADR 0009): attack, defence and home advantage fitted on a tuned blend of xG and goals by weighted least squares in log space, Poisson scorelines at the fitted rates with a low-score correction. Ships if it beats Dixon-Coles on identical rows; `docs/evaluation.md` records which model ships, computed from the report.
+4. `hierarchical.HierarchicalModel`: Bayesian hierarchical Poisson with partial pooling across clubs. Gives posterior uncertainty on team strength and handles promoted clubs and thin early-season data properly. Not built.
+5. The market benchmark: not a model to beat but the benchmark to measure against. Scored by `evaluate/market.py` from the de-vigged closing price (ADR 0007) rather than as a `MatchModel`.
 
 Optional branch, only if 2 and 3 plateau: gradient boosting on engineered features, benchmarked against the Poisson family rather than replacing it.
 
@@ -324,7 +310,7 @@ Optional branch, only if 2 and 3 plateau: gradient boosting on engineered featur
 - **Time decay is non-optional**. Squads turn over every window; a model treating a club as one entity across five seasons is wrong.
 - **Promoted-club priors**: ClubElo rating at season start blended with squad market value, shrunk toward a recency-weighted promoted-club mean. **No Championship xG.** Understat does not cover the Championship, and deriving a league-strength conversion from goals would mean estimating a factor from roughly three clubs per season. ClubElo already performs continuous cross-league strength conversion and covers lower divisions by club-name lookup, so the conversion is both free and better estimated than a bespoke one. See `docs/adr/0006-promoted-club-priors.md`.
 - **The promoted-club prior must carry real variance, not a point estimate.** The empirical record is unstable enough that a tight prior is indefensible. All six promoted clubs were relegated in each of 2023/24 and 2024/25, which had not happened once since 1997/98. Then 2025/26 broke it: Sunderland finished 7th on 54 points, the joint-best finish by a promoted side since Wolves in 2018/19, Leeds finished 14th, and Burnley was the only promoted club to go down. A prior fit on the two preceding seasons would have given Sunderland near-certain relegation. Anchor the prior mean on the longer record: the average points total for the club finishing 18th across the previous 22 completed seasons is 33.8.
-- **Promoted clubs are not interchangeable.** For 2026/27 the promoted clubs are Coventry, Ipswich and Hull. Ipswich has 2024/25 top-flight data and should be modelled with it rather than pooled into the no-data prior alongside the other two.
+- **Promoted clubs are not interchangeable.** For 2026/27 the promoted clubs are Coventry, Ipswich and Hull. Ipswich has 2024/25 top-flight data and keeps it; the prior gate (`needs_prior`) counts evidence with the model's own decay, so Ipswich is shrunk toward the prior only as far as its data has decayed, while Hull's 2016/17 season counts for almost nothing. The prior enters the shipped models as pseudo-observations against the real clubs in the fixture list (ADR 0006, story C-08).
 - **Home advantage is time-varying**, not a constant. Fit it as a parameter over recent seasons.
 - **European competition congestion is deferred.** Rest-day derivation from FPL `kickoff_time` is built in `features/schedule.py` from v1 because it is nearly free and belongs in the curated tables regardless, but it does not enter the model until the hierarchical baseline is established. The reason is confounding: clubs in European competition are also the strongest clubs, so a naive participation indicator partly re-encodes team strength and will appear predictive for the wrong reason. The genuine residual is a rest-day effect and it is small. Add it as a single additive term afterwards and keep it only if it improves held-out RPS on its own.
 
@@ -380,7 +366,7 @@ Protocol documented in `docs/evaluation.md` and results regenerated by `just eva
 - **Ranked probability score** on 1X2 outcomes. Primary metric. RPS is the accepted standard for football match forecasting because it rewards getting close on an ordered outcome, which accuracy and log loss do not.
 - **Log loss** and **Brier score** as secondary.
 - **Calibration curves** in 10 probability buckets with binomial confidence bands.
-- **Season-level**: at a frozen gameweek, the realised final position versus the predicted position distribution, aggregated with a rank probability score across clubs and seasons.
+- **Season-level**: at frozen cutoffs (100, 190 and 280 matches played) in every completed season, the realised final position versus the predicted position distribution, scored with a ranked probability score over positions plus log loss of the realised title, top-four and relegation events (`evaluate/season.py`).
 
 ### 8.2 Protocol
 

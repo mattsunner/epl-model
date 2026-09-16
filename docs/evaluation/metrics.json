@@ -1,5 +1,6 @@
 {
-  "generated_at": "2026-09-16T16:06:42+00:00",
+  "shipped_model": "xg-rates",
+  "generated_at": "2026-09-16T16:35:56+00:00",
   "window": {
     "first_season": "2015/16",
     "last_season": "2025/26",
@@ -9,11 +10,13 @@
   "coverage": {
     "warmup_excluded": {
       "poisson": 100,
-      "dixon-coles": 100
+      "dixon-coles": 100,
+      "xg-rates": 100
     },
     "unrateable": {
       "poisson": 14,
-      "dixon-coles": 14
+      "dixon-coles": 14,
+      "xg-rates": 14
     },
     "unrateable_matches": {
       "poisson": [
@@ -187,6 +190,92 @@
           "home_club_id": "ipswich",
           "away_club_id": "liverpool"
         }
+      ],
+      "xg-rates": [
+        {
+          "season": "2016/17",
+          "date": "2016-08-13",
+          "home_club_id": "burnley",
+          "away_club_id": "swansea"
+        },
+        {
+          "season": "2016/17",
+          "date": "2016-08-13",
+          "home_club_id": "hull",
+          "away_club_id": "leicester"
+        },
+        {
+          "season": "2016/17",
+          "date": "2016-08-13",
+          "home_club_id": "middlesbrough",
+          "away_club_id": "stoke"
+        },
+        {
+          "season": "2017/18",
+          "date": "2017-08-12",
+          "home_club_id": "brighton",
+          "away_club_id": "man-city"
+        },
+        {
+          "season": "2017/18",
+          "date": "2017-08-12",
+          "home_club_id": "crystal-palace",
+          "away_club_id": "huddersfield"
+        },
+        {
+          "season": "2018/19",
+          "date": "2018-08-11",
+          "home_club_id": "bournemouth",
+          "away_club_id": "cardiff"
+        },
+        {
+          "season": "2018/19",
+          "date": "2018-08-11",
+          "home_club_id": "fulham",
+          "away_club_id": "crystal-palace"
+        },
+        {
+          "season": "2018/19",
+          "date": "2018-08-11",
+          "home_club_id": "wolves",
+          "away_club_id": "everton"
+        },
+        {
+          "season": "2019/20",
+          "date": "2019-08-10",
+          "home_club_id": "bournemouth",
+          "away_club_id": "sheffield-united"
+        },
+        {
+          "season": "2020/21",
+          "date": "2020-09-12",
+          "home_club_id": "liverpool",
+          "away_club_id": "leeds"
+        },
+        {
+          "season": "2021/22",
+          "date": "2021-08-13",
+          "home_club_id": "brentford",
+          "away_club_id": "arsenal"
+        },
+        {
+          "season": "2022/23",
+          "date": "2022-08-06",
+          "home_club_id": "newcastle",
+          "away_club_id": "nottm-forest"
+        },
+        {
+          "season": "2023/24",
+          "date": "2023-08-12",
+          "home_club_id": "brighton",
+          "away_club_id": "luton"
+        },
+        {
+          "season": "2024/25",
+          "date": "2024-08-17",
+          "home_club_id": "ipswich",
+          "away_club_id": "liverpool"
+        }
       ]
     },
     "benchmark_by_source": {
@@ -212,6 +301,13 @@
       "rps": 0.20100292589902954,
       "log_loss": 0.97886107705942,
       "brier": 0.5804057901251446
+    },
+    {
+      "model": "xg-rates",
+      "n": 4066,
+      "rps": 0.19797910504277377,
+      "log_loss": 0.9690857697011771,
+      "brier": 0.5746794166256877
     },
     {
       "model": "market (shin)",
@@ -242,6 +338,13 @@
       "rps": 0.20100292589902954,
       "log_loss": 0.97886107705942,
       "brier": 0.5804057901251446
+    },
+    {
+      "model": "xg-rates",
+      "n": 4066,
+      "rps": 0.19797910504277377,
+      "log_loss": 0.9690857697011771,
+      "brier": 0.5746794166256877
     },
     {
       "model": "market (shin)",
@@ -434,6 +537,94 @@
       "rps": 0.20998213955113404,
       "log_loss": 1.0328676895428526,
       "brier": 0.6185093296337363
+    },
+    {
+      "model": "xg-rates",
+      "season": "2015/16",
+      "n": 280,
+      "rps": 0.20726251494638365,
+      "log_loss": 1.0329877287469618,
+      "brier": 0.6185510213205601
+    },
+    {
+      "model": "xg-rates",
+      "season": "2016/17",
+      "n": 377,
+      "rps": 0.18914775637735268,
+      "log_loss": 0.9304680832347652,
+      "brier": 0.5493325889023476
+    },
+    {
+      "model": "xg-rates",
+      "season": "2017/18",
+      "n": 378,
+      "rps": 0.1875522502580969,
+      "log_loss": 0.95229791713894,
+      "brier": 0.5654382017255505
+    },
+    {
+      "model": "xg-rates",
+      "season": "2018/19",
+      "n": 377,
+      "rps": 0.1856147926446881,
+      "log_loss": 0.8942016287087272,
+      "brier": 0.522903234243574
+    },
+    {
+      "model": "xg-rates",
+      "season": "2019/20",
+      "n": 379,
+      "rps": 0.2002869930241031,
+      "log_loss": 0.9772604470574824,
+      "brier": 0.5776930731798063
+    },
+    {
+      "model": "xg-rates",
+      "season": "2020/21",
+      "n": 379,
+      "rps": 0.2196996765194784,
+      "log_loss": 1.0345273669115038,
+      "brier": 0.6128893285809158
+    },
+    {
+      "model": "xg-rates",
+      "season": "2021/22",
+      "n": 379,
+      "rps": 0.19444951538261965,
+      "log_loss": 0.9551013135384381,
+      "brier": 0.5655868066928021
+    },
+    {
+      "model": "xg-rates",
+      "season": "2022/23",
+      "n": 379,
+      "rps": 0.20263243707728867,
+      "log_loss": 0.9778347043692814,
+      "brier": 0.5813286500305002
+    },
+    {
+      "model": "xg-rates",
+      "season": "2023/24",
+      "n": 379,
+      "rps": 0.18855160955299036,
+      "log_loss": 0.9270256138684135,
+      "brier": 0.5451538932671526
+    },
+    {
+      "model": "xg-rates",
+      "season": "2024/25",
+      "n": 379,
+      "rps": 0.19549174100587882,
+      "log_loss": 0.9646732175729705,
+      "brier": 0.5751364579598868
+    },
+    {
+      "model": "xg-rates",
+      "season": "2025/26",
+      "n": 380,
+      "rps": 0.20933649404980675,
+      "log_loss": 1.0294549791501706,
+      "brier": 0.6183735393987527
     },
     {
       "model": "market (shin)",
@@ -1296,6 +1487,1683 @@
         "ci_low": 0.42409044296597176,
         "ci_high": 0.764343134584204
       }
+    ],
+    "xg-rates": [
+      {
+        "outcome": "pooled",
+        "bucket_low": 0.0,
+        "bucket_high": 0.1,
+        "mean_predicted": 0.06583259114773148,
+        "empirical_frequency": 0.09036144578313253,
+        "n": 664,
+        "ci_low": 0.07084651451861906,
+        "ci_high": 0.11458890160451174
+      },
+      {
+        "outcome": "pooled",
+        "bucket_low": 0.1,
+        "bucket_high": 0.2,
+        "mean_predicted": 0.15778427015457272,
+        "empirical_frequency": 0.1635969664138678,
+        "n": 1846,
+        "ci_low": 0.14742424206510538,
+        "ci_high": 0.18116686822831593
+      },
+      {
+        "outcome": "pooled",
+        "bucket_low": 0.2,
+        "bucket_high": 0.30000000000000004,
+        "mean_predicted": 0.2542675980620237,
+        "empirical_frequency": 0.2536146006162598,
+        "n": 4219,
+        "ci_low": 0.24071438595410052,
+        "ci_high": 0.2669630818662048
+      },
+      {
+        "outcome": "pooled",
+        "bucket_low": 0.30000000000000004,
+        "bucket_high": 0.4,
+        "mean_predicted": 0.3420207058466719,
+        "empirical_frequency": 0.329951690821256,
+        "n": 2070,
+        "ci_low": 0.310027579983646,
+        "ci_high": 0.3505057761195081
+      },
+      {
+        "outcome": "pooled",
+        "bucket_low": 0.4,
+        "bucket_high": 0.5,
+        "mean_predicted": 0.44829886165651966,
+        "empirical_frequency": 0.4434931506849315,
+        "n": 1168,
+        "ci_low": 0.4152336730176645,
+        "ci_high": 0.47212310292979115
+      },
+      {
+        "outcome": "pooled",
+        "bucket_low": 0.5,
+        "bucket_high": 0.6000000000000001,
+        "mean_predicted": 0.5451548189082267,
+        "empirical_frequency": 0.5424242424242425,
+        "n": 990,
+        "ci_low": 0.5112863059425764,
+        "ci_high": 0.5732342171795678
+      },
+      {
+        "outcome": "pooled",
+        "bucket_low": 0.6000000000000001,
+        "bucket_high": 0.7000000000000001,
+        "mean_predicted": 0.6462453272645797,
+        "empirical_frequency": 0.6883116883116883,
+        "n": 616,
+        "ci_low": 0.650662267938253,
+        "ci_high": 0.7236269905463304
+      },
+      {
+        "outcome": "pooled",
+        "bucket_low": 0.7000000000000001,
+        "bucket_high": 0.8,
+        "mean_predicted": 0.7469549659190405,
+        "empirical_frequency": 0.7149532710280374,
+        "n": 428,
+        "ci_low": 0.670420476121267,
+        "ci_high": 0.7556618192249959
+      },
+      {
+        "outcome": "pooled",
+        "bucket_low": 0.8,
+        "bucket_high": 0.9,
+        "mean_predicted": 0.8416863541112375,
+        "empirical_frequency": 0.8397435897435898,
+        "n": 156,
+        "ci_low": 0.7741252477890105,
+        "ci_high": 0.8890318629009512
+      },
+      {
+        "outcome": "pooled",
+        "bucket_low": 0.9,
+        "bucket_high": 1.0,
+        "mean_predicted": 0.9238117088447179,
+        "empirical_frequency": 0.8536585365853658,
+        "n": 41,
+        "ci_low": 0.7155654195751904,
+        "ci_high": 0.9311575185870407
+      },
+      {
+        "outcome": "home",
+        "bucket_low": 0.0,
+        "bucket_high": 0.1,
+        "mean_predicted": 0.07166901267624125,
+        "empirical_frequency": 0.11023622047244094,
+        "n": 127,
+        "ci_low": 0.06681000217884539,
+        "ci_high": 0.17654909139660796
+      },
+      {
+        "outcome": "home",
+        "bucket_low": 0.1,
+        "bucket_high": 0.2,
+        "mean_predicted": 0.15876275748388693,
+        "empirical_frequency": 0.17585301837270342,
+        "n": 381,
+        "ci_low": 0.14091616519564715,
+        "ci_high": 0.21726109367634305
+      },
+      {
+        "outcome": "home",
+        "bucket_low": 0.2,
+        "bucket_high": 0.30000000000000004,
+        "mean_predicted": 0.24891594220440913,
+        "empirical_frequency": 0.27212020033388984,
+        "n": 599,
+        "ci_low": 0.23801578959702524,
+        "ci_high": 0.3091288269426949
+      },
+      {
+        "outcome": "home",
+        "bucket_low": 0.30000000000000004,
+        "bucket_high": 0.4,
+        "mean_predicted": 0.35050576183091187,
+        "empirical_frequency": 0.3533246414602347,
+        "n": 767,
+        "ci_low": 0.3203037452682109,
+        "ci_high": 0.3878074396903326
+      },
+      {
+        "outcome": "home",
+        "bucket_low": 0.4,
+        "bucket_high": 0.5,
+        "mean_predicted": 0.45020326242951925,
+        "empirical_frequency": 0.4376899696048632,
+        "n": 658,
+        "ci_low": 0.4002542055185033,
+        "ci_high": 0.475849053189236
+      },
+      {
+        "outcome": "home",
+        "bucket_low": 0.5,
+        "bucket_high": 0.6000000000000001,
+        "mean_predicted": 0.5462439149840216,
+        "empirical_frequency": 0.5418060200668896,
+        "n": 598,
+        "ci_low": 0.5017318166547398,
+        "ci_high": 0.5813465410542402
+      },
+      {
+        "outcome": "home",
+        "bucket_low": 0.6000000000000001,
+        "bucket_high": 0.7000000000000001,
+        "mean_predicted": 0.6474685158988203,
+        "empirical_frequency": 0.6986301369863014,
+        "n": 438,
+        "ci_low": 0.6540836746689731,
+        "ci_high": 0.7397227383019107
+      },
+      {
+        "outcome": "home",
+        "bucket_low": 0.7000000000000001,
+        "bucket_high": 0.8,
+        "mean_predicted": 0.7464810975189691,
+        "empirical_frequency": 0.7064220183486238,
+        "n": 327,
+        "ci_low": 0.654894918162346,
+        "ci_high": 0.7531555132473577
+      },
+      {
+        "outcome": "home",
+        "bucket_low": 0.8,
+        "bucket_high": 0.9,
+        "mean_predicted": 0.8437466379521585,
+        "empirical_frequency": 0.8582089552238806,
+        "n": 134,
+        "ci_low": 0.7891423611607532,
+        "ci_high": 0.9073099313594385
+      },
+      {
+        "outcome": "home",
+        "bucket_low": 0.9,
+        "bucket_high": 1.0,
+        "mean_predicted": 0.9231914130938721,
+        "empirical_frequency": 0.8918918918918919,
+        "n": 37,
+        "ci_low": 0.7529146845587398,
+        "ci_high": 0.9571481005958853
+      },
+      {
+        "outcome": "draw",
+        "bucket_low": 0.0,
+        "bucket_high": 0.1,
+        "mean_predicted": 0.07151653332295456,
+        "empirical_frequency": 0.09210526315789473,
+        "n": 76,
+        "ci_low": 0.04533400406377608,
+        "ci_high": 0.17812707848936227
+      },
+      {
+        "outcome": "draw",
+        "bucket_low": 0.1,
+        "bucket_high": 0.2,
+        "mean_predicted": 0.16384491955949784,
+        "empirical_frequency": 0.15629742033383914,
+        "n": 659,
+        "ci_low": 0.13057283388666957,
+        "ci_high": 0.18600582308816294
+      },
+      {
+        "outcome": "draw",
+        "bucket_low": 0.2,
+        "bucket_high": 0.30000000000000004,
+        "mean_predicted": 0.25666086975605906,
+        "empirical_frequency": 0.2500908760450745,
+        "n": 2751,
+        "ci_low": 0.23426400339287407,
+        "ci_high": 0.26661471483702487
+      },
+      {
+        "outcome": "draw",
+        "bucket_low": 0.30000000000000004,
+        "bucket_high": 0.4,
+        "mean_predicted": 0.3223077181133378,
+        "empirical_frequency": 0.2782608695652174,
+        "n": 575,
+        "ci_low": 0.24319508676241014,
+        "ci_high": 0.3162697785920417
+      },
+      {
+        "outcome": "draw",
+        "bucket_low": 0.4,
+        "bucket_high": 0.5,
+        "mean_predicted": 0.41609276770933745,
+        "empirical_frequency": 0.25,
+        "n": 4,
+        "ci_low": 0.04558726080970055,
+        "ci_high": 0.6993581574175981
+      },
+      {
+        "outcome": "draw",
+        "bucket_low": 0.5,
+        "bucket_high": 0.6000000000000001,
+        "mean_predicted": 0.5261146542067087,
+        "empirical_frequency": 0.0,
+        "n": 1,
+        "ci_low": 0.0,
+        "ci_high": 0.7934506856227626
+      },
+      {
+        "outcome": "away",
+        "bucket_low": 0.0,
+        "bucket_high": 0.1,
+        "mean_predicted": 0.06328767761315948,
+        "empirical_frequency": 0.08459869848156182,
+        "n": 461,
+        "ci_low": 0.06250189645068127,
+        "ci_high": 0.1135612693184101
+      },
+      {
+        "outcome": "away",
+        "bucket_low": 0.1,
+        "bucket_high": 0.2,
+        "mean_predicted": 0.15236643934773103,
+        "empirical_frequency": 0.16377171215880892,
+        "n": 806,
+        "ci_low": 0.13982909003114924,
+        "ci_high": 0.19090411200907442
+      },
+      {
+        "outcome": "away",
+        "bucket_low": 0.2,
+        "bucket_high": 0.30000000000000004,
+        "mean_predicted": 0.25038008532142547,
+        "empirical_frequency": 0.2520138089758343,
+        "n": 869,
+        "ci_low": 0.22428144047707183,
+        "ci_high": 0.2819289994093092
+      },
+      {
+        "outcome": "away",
+        "bucket_low": 0.30000000000000004,
+        "bucket_high": 0.4,
+        "mean_predicted": 0.34865110420759904,
+        "empirical_frequency": 0.34615384615384615,
+        "n": 728,
+        "ci_low": 0.312484258568936,
+        "ci_high": 0.3814385203332613
+      },
+      {
+        "outcome": "away",
+        "bucket_low": 0.4,
+        "bucket_high": 0.5,
+        "mean_predicted": 0.4460769815520827,
+        "empirical_frequency": 0.4525691699604743,
+        "n": 506,
+        "ci_low": 0.4097197052308197,
+        "ci_high": 0.4961333807245125
+      },
+      {
+        "outcome": "away",
+        "bucket_low": 0.5,
+        "bucket_high": 0.6000000000000001,
+        "mean_predicted": 0.5435378386304163,
+        "empirical_frequency": 0.5447570332480819,
+        "n": 391,
+        "ci_low": 0.4951994979174701,
+        "ci_high": 0.593443675736425
+      },
+      {
+        "outcome": "away",
+        "bucket_low": 0.6000000000000001,
+        "bucket_high": 0.7000000000000001,
+        "mean_predicted": 0.6432354586027964,
+        "empirical_frequency": 0.6629213483146067,
+        "n": 178,
+        "ci_low": 0.5906868621322702,
+        "ci_high": 0.728272303594569
+      },
+      {
+        "outcome": "away",
+        "bucket_low": 0.7000000000000001,
+        "bucket_high": 0.8,
+        "mean_predicted": 0.7484891735113514,
+        "empirical_frequency": 0.7425742574257426,
+        "n": 101,
+        "ci_low": 0.6495247830925932,
+        "ci_high": 0.8178475765748034
+      },
+      {
+        "outcome": "away",
+        "bucket_low": 0.8,
+        "bucket_high": 0.9,
+        "mean_predicted": 0.8291373525347193,
+        "empirical_frequency": 0.7272727272727273,
+        "n": 22,
+        "ci_low": 0.5184826598759762,
+        "ci_high": 0.8684923971201053
+      },
+      {
+        "outcome": "away",
+        "bucket_low": 0.9,
+        "bucket_high": 1.0,
+        "mean_predicted": 0.9295494445400414,
+        "empirical_frequency": 0.5,
+        "n": 4,
+        "ci_low": 0.15003898915214947,
+        "ci_high": 0.8499610108478506
+      }
     ]
+  },
+  "season_level": {
+    "simulations": 5000,
+    "summary": [
+      {
+        "model": "dixon-coles",
+        "cutoff": 100,
+        "n_seasons": 11,
+        "position_rps": 0.08304312694736843,
+        "title_log_loss": 3.166544415851879,
+        "top_four_log_loss": 0.22462074805623414,
+        "relegation_log_loss": 0.216504259939686
+      },
+      {
+        "model": "poisson",
+        "cutoff": 100,
+        "n_seasons": 11,
+        "position_rps": 0.09341546943540671,
+        "title_log_loss": 3.343270123068756,
+        "top_four_log_loss": 0.2508302790711423,
+        "relegation_log_loss": 0.2517545046558373
+      },
+      {
+        "model": "xg-rates",
+        "cutoff": 100,
+        "n_seasons": 11,
+        "position_rps": 0.08144126675598086,
+        "title_log_loss": 1.078417642525196,
+        "top_four_log_loss": 0.20114247877007987,
+        "relegation_log_loss": 0.22416955762400056
+      },
+      {
+        "model": "dixon-coles",
+        "cutoff": 190,
+        "n_seasons": 11,
+        "position_rps": 0.06019435339712919,
+        "title_log_loss": 0.4874280694641401,
+        "top_four_log_loss": 0.1417776193114223,
+        "relegation_log_loss": 0.16072888741503613
+      },
+      {
+        "model": "poisson",
+        "cutoff": 190,
+        "n_seasons": 11,
+        "position_rps": 0.06573719724401915,
+        "title_log_loss": 0.5604986720681322,
+        "top_four_log_loss": 0.14702823865935077,
+        "relegation_log_loss": 0.16908493841941002
+      },
+      {
+        "model": "xg-rates",
+        "cutoff": 190,
+        "n_seasons": 11,
+        "position_rps": 0.05909879215311005,
+        "title_log_loss": 0.5790582841842323,
+        "top_four_log_loss": 0.12323563954571584,
+        "relegation_log_loss": 0.17461392930447425
+      },
+      {
+        "model": "dixon-coles",
+        "cutoff": 280,
+        "n_seasons": 11,
+        "position_rps": 0.04443244981818181,
+        "title_log_loss": 0.27625083218184404,
+        "top_four_log_loss": 0.11949826536305887,
+        "relegation_log_loss": 0.08605558979610965
+      },
+      {
+        "model": "poisson",
+        "cutoff": 280,
+        "n_seasons": 11,
+        "position_rps": 0.04703451115789474,
+        "title_log_loss": 0.2767890567177124,
+        "top_four_log_loss": 0.12268199691354278,
+        "relegation_log_loss": 0.09528320011957768
+      },
+      {
+        "model": "xg-rates",
+        "cutoff": 280,
+        "n_seasons": 11,
+        "position_rps": 0.044428132038277515,
+        "title_log_loss": 0.280317788697297,
+        "top_four_log_loss": 0.11385807577580387,
+        "relegation_log_loss": 0.09037149025757195
+      }
+    ],
+    "scores": [
+      {
+        "model": "poisson",
+        "season": "2015/16",
+        "cutoff": 100,
+        "played": 100,
+        "position_rps": 0.09498756147368423,
+        "title_log_loss": 27.631021115928547,
+        "top_four_log_loss": 0.30215912423688673,
+        "relegation_log_loss": 0.21778506639178094
+      },
+      {
+        "model": "dixon-coles",
+        "season": "2015/16",
+        "cutoff": 100,
+        "played": 100,
+        "position_rps": 0.09336547557894738,
+        "title_log_loss": 27.631021115928547,
+        "top_four_log_loss": 0.29942064447826167,
+        "relegation_log_loss": 0.21248437535045803
+      },
+      {
+        "model": "xg-rates",
+        "season": "2015/16",
+        "cutoff": 100,
+        "played": 100,
+        "position_rps": 0.072242664,
+        "title_log_loss": 6.319968614080018,
+        "top_four_log_loss": 0.15523109693326892,
+        "relegation_log_loss": 0.2555606814089788
+      },
+      {
+        "model": "poisson",
+        "season": "2015/16",
+        "cutoff": 190,
+        "played": 190,
+        "position_rps": 0.08592361726315789,
+        "title_log_loss": 1.5223432055831665,
+        "top_four_log_loss": 0.044569563814042645,
+        "relegation_log_loss": 0.27315606286734867
+      },
+      {
+        "model": "dixon-coles",
+        "season": "2015/16",
+        "cutoff": 190,
+        "played": 190,
+        "position_rps": 0.08664493831578945,
+        "title_log_loss": 1.4854519326531093,
+        "top_four_log_loss": 0.04167290854619794,
+        "relegation_log_loss": 0.27602573609012027
+      },
+      {
+        "model": "xg-rates",
+        "season": "2015/16",
+        "cutoff": 190,
+        "played": 190,
+        "position_rps": 0.07892625410526317,
+        "title_log_loss": 2.496169842066711,
+        "top_four_log_loss": 0.05911564577530106,
+        "relegation_log_loss": 0.254605926289248
+      },
+      {
+        "model": "poisson",
+        "season": "2015/16",
+        "cutoff": 280,
+        "played": 286,
+        "position_rps": 0.036132979157894735,
+        "title_log_loss": 0.41037715246918505,
+        "top_four_log_loss": 0.044332620616888516,
+        "relegation_log_loss": 0.06331092812992925
+      },
+      {
+        "model": "dixon-coles",
+        "season": "2015/16",
+        "cutoff": 280,
+        "played": 286,
+        "position_rps": 0.03587096505263158,
+        "title_log_loss": 0.38038232774070124,
+        "top_four_log_loss": 0.046456033773405334,
+        "relegation_log_loss": 0.06071392509291227
+      },
+      {
+        "model": "xg-rates",
+        "season": "2015/16",
+        "cutoff": 280,
+        "played": 286,
+        "position_rps": 0.03288892189473684,
+        "title_log_loss": 0.30734071011496533,
+        "top_four_log_loss": 0.03200431985017114,
+        "relegation_log_loss": 0.06516830931901325
+      },
+      {
+        "model": "poisson",
+        "season": "2016/17",
+        "cutoff": 100,
+        "played": 100,
+        "position_rps": 0.08954096294736841,
+        "title_log_loss": 3.249335032352909,
+        "top_four_log_loss": 0.20618378033191603,
+        "relegation_log_loss": 0.2094493085283214
+      },
+      {
+        "model": "dixon-coles",
+        "season": "2016/17",
+        "cutoff": 100,
+        "played": 100,
+        "position_rps": 0.08854615494736842,
+        "title_log_loss": 2.9224818118143983,
+        "top_four_log_loss": 0.18702219825653552,
+        "relegation_log_loss": 0.2111463523882564
+      },
+      {
+        "model": "xg-rates",
+        "season": "2016/17",
+        "cutoff": 100,
+        "played": 100,
+        "position_rps": 0.08297460947368421,
+        "title_log_loss": 1.9296431765914415,
+        "top_four_log_loss": 0.13512047752933212,
+        "relegation_log_loss": 0.31316222488410805
+      },
+      {
+        "model": "poisson",
+        "season": "2016/17",
+        "cutoff": 190,
+        "played": 190,
+        "position_rps": 0.061110342947368425,
+        "title_log_loss": 0.7588597239253266,
+        "top_four_log_loss": 0.12527853874921618,
+        "relegation_log_loss": 0.23680803615823276
+      },
+      {
+        "model": "dixon-coles",
+        "season": "2016/17",
+        "cutoff": 190,
+        "played": 190,
+        "position_rps": 0.060012129684210526,
+        "title_log_loss": 0.5586162876023393,
+        "top_four_log_loss": 0.12295807250561701,
+        "relegation_log_loss": 0.25543059449947064
+      },
+      {
+        "model": "xg-rates",
+        "season": "2016/17",
+        "cutoff": 190,
+        "played": 190,
+        "position_rps": 0.05631682589473684,
+        "title_log_loss": 0.4307829160924542,
+        "top_four_log_loss": 0.09034094421988381,
+        "relegation_log_loss": 0.26116700969274736
+      },
+      {
+        "model": "poisson",
+        "season": "2016/17",
+        "cutoff": 280,
+        "played": 280,
+        "position_rps": 0.04213803052631579,
+        "title_log_loss": 0.08861265835660359,
+        "top_four_log_loss": 0.056407783459521646,
+        "relegation_log_loss": 0.068823771096345
+      },
+      {
+        "model": "dixon-coles",
+        "season": "2016/17",
+        "cutoff": 280,
+        "played": 280,
+        "position_rps": 0.042706510105263155,
+        "title_log_loss": 0.06571254336538133,
+        "top_four_log_loss": 0.04971929337216981,
+        "relegation_log_loss": 0.06748095654011209
+      },
+      {
+        "model": "xg-rates",
+        "season": "2016/17",
+        "cutoff": 280,
+        "played": 280,
+        "position_rps": 0.04437086778947368,
+        "title_log_loss": 0.045625178026275554,
+        "top_four_log_loss": 0.038235286738874025,
+        "relegation_log_loss": 0.06385353248677274
+      },
+      {
+        "model": "poisson",
+        "season": "2017/18",
+        "cutoff": 100,
+        "played": 100,
+        "position_rps": 0.09577220273684209,
+        "title_log_loss": 0.4167283003868751,
+        "top_four_log_loss": 0.17195225381520224,
+        "relegation_log_loss": 0.33388338594773337
+      },
+      {
+        "model": "dixon-coles",
+        "season": "2017/18",
+        "cutoff": 100,
+        "played": 100,
+        "position_rps": 0.09072591684210526,
+        "title_log_loss": 0.34955747616986843,
+        "top_four_log_loss": 0.17439993034635753,
+        "relegation_log_loss": 0.3475197786814456
+      },
+      {
+        "model": "xg-rates",
+        "season": "2017/18",
+        "cutoff": 100,
+        "played": 100,
+        "position_rps": 0.09494085368421051,
+        "title_log_loss": 0.07085174097195114,
+        "top_four_log_loss": 0.10101102018571162,
+        "relegation_log_loss": 0.39625069077566516
+      },
+      {
+        "model": "poisson",
+        "season": "2017/18",
+        "cutoff": 190,
+        "played": 190,
+        "position_rps": 0.06764318442105263,
+        "title_log_loss": 0.012680053157374483,
+        "top_four_log_loss": 0.15833496789783244,
+        "relegation_log_loss": 0.20991922123361814
+      },
+      {
+        "model": "dixon-coles",
+        "season": "2017/18",
+        "cutoff": 190,
+        "played": 190,
+        "position_rps": 0.06429446968421053,
+        "title_log_loss": 0.005213567052887434,
+        "top_four_log_loss": 0.16281816972410346,
+        "relegation_log_loss": 0.19536790696838055
+      },
+      {
+        "model": "xg-rates",
+        "season": "2017/18",
+        "cutoff": 190,
+        "played": 190,
+        "position_rps": 0.07458646715789473,
+        "title_log_loss": 0.0008003201707691552,
+        "top_four_log_loss": 0.16366090120146326,
+        "relegation_log_loss": 0.2284665601224761
+      },
+      {
+        "model": "poisson",
+        "season": "2017/18",
+        "cutoff": 280,
+        "played": 280,
+        "position_rps": 0.04658243642105263,
+        "title_log_loss": 0.00040008002133969133,
+        "top_four_log_loss": 0.035067444617994624,
+        "relegation_log_loss": 0.13828321538595045
+      },
+      {
+        "model": "dixon-coles",
+        "season": "2017/18",
+        "cutoff": 280,
+        "played": 280,
+        "position_rps": 0.0436057214736842,
+        "title_log_loss": 0.00040008002133969133,
+        "top_four_log_loss": 0.0338907935333833,
+        "relegation_log_loss": 0.130216325515972
+      },
+      {
+        "model": "xg-rates",
+        "season": "2017/18",
+        "cutoff": 280,
+        "played": 280,
+        "position_rps": 0.047258775368421053,
+        "title_log_loss": -0.0,
+        "top_four_log_loss": 0.02657959779648699,
+        "relegation_log_loss": 0.12782936430294023
+      },
+      {
+        "model": "poisson",
+        "season": "2018/19",
+        "cutoff": 100,
+        "played": 100,
+        "position_rps": 0.0511713587368421,
+        "title_log_loss": 0.41248972304512876,
+        "top_four_log_loss": 0.07501283332088719,
+        "relegation_log_loss": 0.02895006242040607
+      },
+      {
+        "model": "dixon-coles",
+        "season": "2018/19",
+        "cutoff": 100,
+        "played": 100,
+        "position_rps": 0.04978058021052632,
+        "title_log_loss": 0.23978119246723298,
+        "top_four_log_loss": 0.061486059636695456,
+        "relegation_log_loss": 0.03313808749815188
+      },
+      {
+        "model": "xg-rates",
+        "season": "2018/19",
+        "cutoff": 100,
+        "played": 100,
+        "position_rps": 0.056370917052631586,
+        "title_log_loss": 0.15408401538271516,
+        "top_four_log_loss": 0.04315915237232376,
+        "relegation_log_loss": 0.12614826530462106
+      },
+      {
+        "model": "poisson",
+        "season": "2018/19",
+        "cutoff": 190,
+        "played": 190,
+        "position_rps": 0.04577956715789474,
+        "title_log_loss": 1.377532855451318,
+        "top_four_log_loss": 0.054629000433127586,
+        "relegation_log_loss": 0.05622259946644433
+      },
+      {
+        "model": "dixon-coles",
+        "season": "2018/19",
+        "cutoff": 190,
+        "played": 190,
+        "position_rps": 0.044965922315789476,
+        "title_log_loss": 1.463607464222561,
+        "top_four_log_loss": 0.04413401898348232,
+        "relegation_log_loss": 0.07066525868221737
+      },
+      {
+        "model": "xg-rates",
+        "season": "2018/19",
+        "cutoff": 190,
+        "played": 190,
+        "position_rps": 0.0459384985263158,
+        "title_log_loss": 1.4558588245057997,
+        "top_four_log_loss": 0.01863853944853434,
+        "relegation_log_loss": 0.1741502027797058
+      },
+      {
+        "model": "poisson",
+        "season": "2018/19",
+        "cutoff": 280,
+        "played": 286,
+        "position_rps": 0.029638460210526317,
+        "title_log_loss": 0.42955290363725424,
+        "top_four_log_loss": 0.10526932907818458,
+        "relegation_log_loss": 0.010834983473055348
+      },
+      {
+        "model": "dixon-coles",
+        "season": "2018/19",
+        "cutoff": 280,
+        "played": 286,
+        "position_rps": 0.03152977978947368,
+        "title_log_loss": 0.49560865796113035,
+        "top_four_log_loss": 0.10925564936440804,
+        "relegation_log_loss": 0.01100169604181491
+      },
+      {
+        "model": "xg-rates",
+        "season": "2018/19",
+        "cutoff": 280,
+        "played": 286,
+        "position_rps": 0.030156376631578947,
+        "title_log_loss": 0.36154392105023625,
+        "top_four_log_loss": 0.09146253833561763,
+        "relegation_log_loss": 0.016056222659808033
+      },
+      {
+        "model": "poisson",
+        "season": "2019/20",
+        "cutoff": 100,
+        "played": 100,
+        "position_rps": 0.06716264631578947,
+        "title_log_loss": 0.5467982842248083,
+        "top_four_log_loss": 0.1822587525033112,
+        "relegation_log_loss": 0.27944397143362615
+      },
+      {
+        "model": "dixon-coles",
+        "season": "2019/20",
+        "cutoff": 100,
+        "played": 100,
+        "position_rps": 0.0745195305263158,
+        "title_log_loss": 0.43448205717865707,
+        "top_four_log_loss": 0.18957721205842876,
+        "relegation_log_loss": 0.23161725175294898
+      },
+      {
+        "model": "xg-rates",
+        "season": "2019/20",
+        "cutoff": 100,
+        "played": 100,
+        "position_rps": 0.07386334378947368,
+        "title_log_loss": 0.764428382564909,
+        "top_four_log_loss": 0.1499628628102661,
+        "relegation_log_loss": 0.2954977712851078
+      },
+      {
+        "model": "poisson",
+        "season": "2019/20",
+        "cutoff": 190,
+        "played": 196,
+        "position_rps": 0.04832916757894737,
+        "title_log_loss": 0.046672408198430666,
+        "top_four_log_loss": 0.23533894361515123,
+        "relegation_log_loss": 0.2432868382129807
+      },
+      {
+        "model": "dixon-coles",
+        "season": "2019/20",
+        "cutoff": 190,
+        "played": 196,
+        "position_rps": 0.05068680800000001,
+        "title_log_loss": 0.0116678048676821,
+        "top_four_log_loss": 0.2791204726366604,
+        "relegation_log_loss": 0.1847269158833176
+      },
+      {
+        "model": "xg-rates",
+        "season": "2019/20",
+        "cutoff": 190,
+        "played": 196,
+        "position_rps": 0.04935624821052631,
+        "title_log_loss": 0.020815139713920003,
+        "top_four_log_loss": 0.23362749144201023,
+        "relegation_log_loss": 0.2374254159593845
+      },
+      {
+        "model": "poisson",
+        "season": "2019/20",
+        "cutoff": 280,
+        "played": 285,
+        "position_rps": 0.04123722842105264,
+        "title_log_loss": 0.0006001800720324606,
+        "top_four_log_loss": 0.21540979528323517,
+        "relegation_log_loss": 0.2007842000502637
+      },
+      {
+        "model": "dixon-coles",
+        "season": "2019/20",
+        "cutoff": 280,
+        "played": 285,
+        "position_rps": 0.042867809684210514,
+        "title_log_loss": -0.0,
+        "top_four_log_loss": 0.25047945175773795,
+        "relegation_log_loss": 0.16951696834151259
+      },
+      {
+        "model": "xg-rates",
+        "season": "2019/20",
+        "cutoff": 280,
+        "played": 285,
+        "position_rps": 0.04677416589473684,
+        "title_log_loss": 0.0002000200026670447,
+        "top_four_log_loss": 0.22378847936069649,
+        "relegation_log_loss": 0.21531499630451875
+      },
+      {
+        "model": "poisson",
+        "season": "2020/21",
+        "cutoff": 100,
+        "played": 102,
+        "position_rps": 0.07765210694736843,
+        "title_log_loss": 0.7331361887763086,
+        "top_four_log_loss": 0.19501265890901837,
+        "relegation_log_loss": 0.12133576338587906
+      },
+      {
+        "model": "dixon-coles",
+        "season": "2020/21",
+        "cutoff": 100,
+        "played": 102,
+        "position_rps": 0.06346817494736842,
+        "title_log_loss": 0.584113419535823,
+        "top_four_log_loss": 0.16106333577597548,
+        "relegation_log_loss": 0.07460169608161733
+      },
+      {
+        "model": "xg-rates",
+        "season": "2020/21",
+        "cutoff": 100,
+        "played": 102,
+        "position_rps": 0.07266209936842105,
+        "title_log_loss": 0.5138301327862895,
+        "top_four_log_loss": 0.06839092590049536,
+        "relegation_log_loss": 0.08842200764348747
+      },
+      {
+        "model": "poisson",
+        "season": "2020/21",
+        "cutoff": 190,
+        "played": 194,
+        "position_rps": 0.06254295894736842,
+        "title_log_loss": 0.16794539084944746,
+        "top_four_log_loss": 0.250083677027418,
+        "relegation_log_loss": 0.04499318613835148
+      },
+      {
+        "model": "dixon-coles",
+        "season": "2020/21",
+        "cutoff": 190,
+        "played": 194,
+        "position_rps": 0.059481721473684204,
+        "title_log_loss": 0.11316869810563798,
+        "top_four_log_loss": 0.2505520446934921,
+        "relegation_log_loss": 0.032589678367916076
+      },
+      {
+        "model": "xg-rates",
+        "season": "2020/21",
+        "cutoff": 190,
+        "played": 194,
+        "position_rps": 0.06316639136842106,
+        "title_log_loss": 0.04207277642190777,
+        "top_four_log_loss": 0.17444180324665814,
+        "relegation_log_loss": 0.07352449174924247
+      },
+      {
+        "model": "poisson",
+        "season": "2020/21",
+        "cutoff": 280,
+        "played": 281,
+        "position_rps": 0.047683235157894736,
+        "title_log_loss": 0.00040008002133969133,
+        "top_four_log_loss": 0.20216412446443344,
+        "relegation_log_loss": 0.0396474554779841
+      },
+      {
+        "model": "dixon-coles",
+        "season": "2020/21",
+        "cutoff": 280,
+        "played": 281,
+        "position_rps": 0.047219365473684216,
+        "title_log_loss": 0.0002000200026670447,
+        "top_four_log_loss": 0.21339505909778755,
+        "relegation_log_loss": 0.05034457462571194
+      },
+      {
+        "model": "xg-rates",
+        "season": "2020/21",
+        "cutoff": 280,
+        "played": 281,
+        "position_rps": 0.051404621052631584,
+        "title_log_loss": 0.0002000200026670447,
+        "top_four_log_loss": 0.22897586376870183,
+        "relegation_log_loss": 0.09238322406495805
+      },
+      {
+        "model": "poisson",
+        "season": "2021/22",
+        "cutoff": 100,
+        "played": 100,
+        "position_rps": 0.06721350568421056,
+        "title_log_loss": 0.5218865711254156,
+        "top_four_log_loss": 0.09448925491288816,
+        "relegation_log_loss": 0.17998372769034204
+      },
+      {
+        "model": "dixon-coles",
+        "season": "2021/22",
+        "cutoff": 100,
+        "played": 100,
+        "position_rps": 0.0630268414736842,
+        "title_log_loss": 0.5945696171989514,
+        "top_four_log_loss": 0.1570349136834534,
+        "relegation_log_loss": 0.1478885542672576
+      },
+      {
+        "model": "xg-rates",
+        "season": "2021/22",
+        "cutoff": 100,
+        "played": 100,
+        "position_rps": 0.08487283936842105,
+        "title_log_loss": 0.6202685351473729,
+        "top_four_log_loss": 0.3305541781447209,
+        "relegation_log_loss": 0.21897739780454764
+      },
+      {
+        "model": "poisson",
+        "season": "2021/22",
+        "cutoff": 190,
+        "played": 190,
+        "position_rps": 0.05101009873684211,
+        "title_log_loss": 0.04583453634379936,
+        "top_four_log_loss": 0.07358686894227401,
+        "relegation_log_loss": 0.14871720617506817
+      },
+      {
+        "model": "dixon-coles",
+        "season": "2021/22",
+        "cutoff": 190,
+        "played": 190,
+        "position_rps": 0.049022996631578955,
+        "title_log_loss": 0.033970519571153344,
+        "top_four_log_loss": 0.10369191620731517,
+        "relegation_log_loss": 0.1476625527746824
+      },
+      {
+        "model": "xg-rates",
+        "season": "2021/22",
+        "cutoff": 190,
+        "played": 190,
+        "position_rps": 0.049789156,
+        "title_log_loss": 0.04186420409869887,
+        "top_four_log_loss": 0.11480281209772905,
+        "relegation_log_loss": 0.179372047206585
+      },
+      {
+        "model": "poisson",
+        "season": "2021/22",
+        "cutoff": 280,
+        "played": 280,
+        "position_rps": 0.044339272,
+        "title_log_loss": 0.12760612460514603,
+        "top_four_log_loss": 0.13102519169349786,
+        "relegation_log_loss": 0.08447605169243183
+      },
+      {
+        "model": "dixon-coles",
+        "season": "2021/22",
+        "cutoff": 280,
+        "played": 280,
+        "position_rps": 0.04507025115789474,
+        "title_log_loss": 0.1536174886655995,
+        "top_four_log_loss": 0.16908010348964267,
+        "relegation_log_loss": 0.08923154465645644
+      },
+      {
+        "model": "xg-rates",
+        "season": "2021/22",
+        "cutoff": 280,
+        "played": 280,
+        "position_rps": 0.045568937052631577,
+        "title_log_loss": 0.197475804565632,
+        "top_four_log_loss": 0.1951934846608267,
+        "relegation_log_loss": 0.10491472575162246
+      },
+      {
+        "model": "poisson",
+        "season": "2022/23",
+        "cutoff": 100,
+        "played": 104,
+        "position_rps": 0.15929199242105263,
+        "title_log_loss": 0.25515034744929616,
+        "top_four_log_loss": 0.6077941942773866,
+        "relegation_log_loss": 0.8258702640271176
+      },
+      {
+        "model": "dixon-coles",
+        "season": "2022/23",
+        "cutoff": 100,
+        "played": 104,
+        "position_rps": 0.1352779610526316,
+        "title_log_loss": 0.12760612460514603,
+        "top_four_log_loss": 0.5792530849321833,
+        "relegation_log_loss": 0.6893645121334028
+      },
+      {
+        "model": "xg-rates",
+        "season": "2022/23",
+        "cutoff": 100,
+        "played": 104,
+        "position_rps": 0.11861722252631579,
+        "title_log_loss": 0.06102470183777461,
+        "top_four_log_loss": 0.43727807322731743,
+        "relegation_log_loss": 0.5296944500956144
+      },
+      {
+        "model": "poisson",
+        "season": "2022/23",
+        "cutoff": 190,
+        "played": 195,
+        "position_rps": 0.08027378715789474,
+        "title_log_loss": 0.42342543348515715,
+        "top_four_log_loss": 0.2183084374218208,
+        "relegation_log_loss": 0.39391002360220123
+      },
+      {
+        "model": "dixon-coles",
+        "season": "2022/23",
+        "cutoff": 190,
+        "played": 195,
+        "position_rps": 0.06949894652631577,
+        "title_log_loss": 0.4280175125786758,
+        "top_four_log_loss": 0.14830911862964982,
+        "relegation_log_loss": 0.435740551372698
+      },
+      {
+        "model": "xg-rates",
+        "season": "2022/23",
+        "cutoff": 190,
+        "played": 195,
+        "position_rps": 0.0629784894736842,
+        "title_log_loss": 0.7306413849875258,
+        "top_four_log_loss": 0.07490007562897788,
+        "relegation_log_loss": 0.4298495148958013
+      },
+      {
+        "model": "poisson",
+        "season": "2022/23",
+        "cutoff": 280,
+        "played": 280,
+        "position_rps": 0.06429360231578948,
+        "title_log_loss": 0.5978370007556204,
+        "top_four_log_loss": 0.1721387740069671,
+        "relegation_log_loss": 0.3256432227688312
+      },
+      {
+        "model": "dixon-coles",
+        "season": "2022/23",
+        "cutoff": 280,
+        "played": 280,
+        "position_rps": 0.05337028652631578,
+        "title_log_loss": 0.6106459590482015,
+        "top_four_log_loss": 0.12432435818364058,
+        "relegation_log_loss": 0.3012650319676685
+      },
+      {
+        "model": "xg-rates",
+        "season": "2022/23",
+        "cutoff": 280,
+        "played": 280,
+        "position_rps": 0.046840058947368424,
+        "title_log_loss": 0.6585525357954464,
+        "top_four_log_loss": 0.08533223978933194,
+        "relegation_log_loss": 0.25800343254423935
+      },
+      {
+        "model": "poisson",
+        "season": "2023/24",
+        "cutoff": 100,
+        "played": 100,
+        "position_rps": 0.07177654568421052,
+        "title_log_loss": 0.3529675391504104,
+        "top_four_log_loss": 0.35034652362281515,
+        "relegation_log_loss": 0.09124700596516051
+      },
+      {
+        "model": "dixon-coles",
+        "season": "2023/24",
+        "cutoff": 100,
+        "played": 100,
+        "position_rps": 0.0702851585263158,
+        "title_log_loss": 0.2736476834879777,
+        "top_four_log_loss": 0.1673666596469768,
+        "relegation_log_loss": 0.07482537091608764
+      },
+      {
+        "model": "xg-rates",
+        "season": "2023/24",
+        "cutoff": 100,
+        "played": 100,
+        "position_rps": 0.07640664778947368,
+        "title_log_loss": 0.4516137641341445,
+        "top_four_log_loss": 0.16249396033203922,
+        "relegation_log_loss": 0.07430585951859406
+      },
+      {
+        "model": "poisson",
+        "season": "2023/24",
+        "cutoff": 190,
+        "played": 194,
+        "position_rps": 0.049721333263157884,
+        "title_log_loss": 0.5600158679567624,
+        "top_four_log_loss": 0.16794796664051298,
+        "relegation_log_loss": 0.06772385001002551
+      },
+      {
+        "model": "dixon-coles",
+        "season": "2023/24",
+        "cutoff": 190,
+        "played": 194,
+        "position_rps": 0.045416924631578946,
+        "title_log_loss": 0.6539264674066639,
+        "top_four_log_loss": 0.07018080875979996,
+        "relegation_log_loss": 0.054572772139812806
+      },
+      {
+        "model": "xg-rates",
+        "season": "2023/24",
+        "cutoff": 190,
+        "played": 194,
+        "position_rps": 0.04676294484210526,
+        "title_log_loss": 0.7618543785697361,
+        "top_four_log_loss": 0.04304220738969104,
+        "relegation_log_loss": 0.02291780013965112
+      },
+      {
+        "model": "poisson",
+        "season": "2023/24",
+        "cutoff": 280,
+        "played": 282,
+        "position_rps": 0.05215131178947369,
+        "title_log_loss": 0.6292338548162925,
+        "top_four_log_loss": 0.164233927801425,
+        "relegation_log_loss": 0.03177010492997223
+      },
+      {
+        "model": "dixon-coles",
+        "season": "2023/24",
+        "cutoff": 280,
+        "played": 282,
+        "position_rps": 0.051340466736842116,
+        "title_log_loss": 0.976571662759085,
+        "top_four_log_loss": 0.08186394434014027,
+        "relegation_log_loss": 0.025178184021170565
+      },
+      {
+        "model": "xg-rates",
+        "season": "2023/24",
+        "cutoff": 280,
+        "played": 282,
+        "position_rps": 0.04720000821052632,
+        "title_log_loss": 1.3571239838201108,
+        "top_four_log_loss": 0.06671601658071366,
+        "relegation_log_loss": 0.009662810812763815
+      },
+      {
+        "model": "poisson",
+        "season": "2024/25",
+        "cutoff": 100,
+        "played": 100,
+        "position_rps": 0.12674736273684212,
+        "title_log_loss": 1.1841701770297564,
+        "top_four_log_loss": 0.099195733328242,
+        "relegation_log_loss": 0.25977090279752424
+      },
+      {
+        "model": "dixon-coles",
+        "season": "2024/25",
+        "cutoff": 100,
+        "played": 100,
+        "position_rps": 0.08747444631578946,
+        "title_log_loss": 1.2427136326423665,
+        "top_four_log_loss": 0.0875665122385986,
+        "relegation_log_loss": 0.19917321090563175
+      },
+      {
+        "model": "xg-rates",
+        "season": "2024/25",
+        "cutoff": 100,
+        "played": 100,
+        "position_rps": 0.0685878692631579,
+        "title_log_loss": 0.6670896462406557,
+        "top_four_log_loss": 0.08099198045247198,
+        "relegation_log_loss": 0.09090781739560536
+      },
+      {
+        "model": "poisson",
+        "season": "2024/25",
+        "cutoff": 190,
+        "played": 196,
+        "position_rps": 0.0682272747368421,
+        "title_log_loss": 0.10447202159671107,
+        "top_four_log_loss": 0.03740711198777213,
+        "relegation_log_loss": 0.1079101891414864
+      },
+      {
+        "model": "dixon-coles",
+        "season": "2024/25",
+        "cutoff": 190,
+        "played": 196,
+        "position_rps": 0.051114762315789465,
+        "title_log_loss": 0.1374246759116722,
+        "top_four_log_loss": 0.08308044329934712,
+        "relegation_log_loss": 0.07519372170539228
+      },
+      {
+        "model": "xg-rates",
+        "season": "2024/25",
+        "cutoff": 190,
+        "played": 196,
+        "position_rps": 0.05285471494736842,
+        "title_log_loss": 0.1253364913112977,
+        "top_four_log_loss": 0.14625586836429044,
+        "relegation_log_loss": 0.032482995435500615
+      },
+      {
+        "model": "poisson",
+        "season": "2024/25",
+        "cutoff": 280,
+        "played": 280,
+        "position_rps": 0.04339014000000001,
+        "title_log_loss": 0.008435478821101575,
+        "top_four_log_loss": 0.04918386396554315,
+        "relegation_log_loss": 0.026279047078081423
+      },
+      {
+        "model": "dixon-coles",
+        "season": "2024/25",
+        "cutoff": 280,
+        "played": 280,
+        "position_rps": 0.03994037305263158,
+        "title_log_loss": 0.013693327132002454,
+        "top_four_log_loss": 0.10367505191063878,
+        "relegation_log_loss": 0.007520521007700187
+      },
+      {
+        "model": "xg-rates",
+        "season": "2024/25",
+        "cutoff": 280,
+        "played": 280,
+        "position_rps": 0.044453713894736846,
+        "title_log_loss": 0.004610612557683294,
+        "top_four_log_loss": 0.13460665061709437,
+        "relegation_log_loss": 0.001732015203358514
+      },
+      {
+        "model": "poisson",
+        "season": "2025/26",
+        "cutoff": 100,
+        "played": 100,
+        "position_rps": 0.12625391810526318,
+        "title_log_loss": 1.4722880742868667,
+        "top_four_log_loss": 0.47472796052401156,
+        "relegation_log_loss": 0.22158009262631934
+      },
+      {
+        "model": "dixon-coles",
+        "season": "2025/26",
+        "cutoff": 100,
+        "played": 100,
+        "position_rps": 0.09700415600000002,
+        "title_log_loss": 0.4320144433417009,
+        "top_four_log_loss": 0.406637677565109,
+        "relegation_log_loss": 0.159787669361288
+      },
+      {
+        "model": "xg-rates",
+        "season": "2025/26",
+        "cutoff": 100,
+        "played": 100,
+        "position_rps": 0.094314868,
+        "title_log_loss": 0.3097913580398819,
+        "top_four_log_loss": 0.5483735385829311,
+        "relegation_log_loss": 0.07693796774767625
+      },
+      {
+        "model": "poisson",
+        "season": "2025/26",
+        "cutoff": 190,
+        "played": 190,
+        "position_rps": 0.10254783747368423,
+        "title_log_loss": 1.1457038962019601,
+        "top_four_log_loss": 0.25182554872369056,
+        "relegation_log_loss": 0.07728710960775292
+      },
+      {
+        "model": "dixon-coles",
+        "season": "2025/26",
+        "cutoff": 190,
+        "played": 190,
+        "position_rps": 0.08099826778947368,
+        "title_log_loss": 0.4706438341331588,
+        "top_four_log_loss": 0.2530358384399797,
+        "relegation_log_loss": 0.040042073081389594
+      },
+      {
+        "model": "xg-rates",
+        "season": "2025/26",
+        "cutoff": 190,
+        "played": 190,
+        "position_rps": 0.06941072315789475,
+        "title_log_loss": 0.2634448480877355,
+        "top_four_log_loss": 0.23676574618833493,
+        "relegation_log_loss": 0.02679125807887453
+      },
+      {
+        "model": "poisson",
+        "season": "2025/26",
+        "cutoff": 280,
+        "played": 281,
+        "position_rps": 0.06979292673684209,
+        "title_log_loss": 0.7516241103189212,
+        "top_four_log_loss": 0.17426911106127968,
+        "relegation_log_loss": 0.058262221232510014
+      },
+      {
+        "model": "dixon-coles",
+        "season": "2025/26",
+        "cutoff": 280,
+        "played": 281,
+        "position_rps": 0.05523541894736842,
+        "title_log_loss": 0.3419270873041767,
+        "top_four_log_loss": 0.13234118017069313,
+        "relegation_log_loss": 0.03414175994617465
+      },
+      {
+        "model": "xg-rates",
+        "season": "2025/26",
+        "cutoff": 280,
+        "played": 281,
+        "position_rps": 0.05179300568421054,
+        "title_log_loss": 0.15082288973458366,
+        "top_four_log_loss": 0.1295443560353277,
+        "relegation_log_loss": 0.03916775938329627
+      }
+    ]
+  },
+  "tuning": {
+    "dixon-coles-xi": {
+      "parameter": "xi",
+      "grid": [
+        {
+          "value": 0.0,
+          "select_n": 2549,
+          "select_rps": 0.20123252130144495,
+          "report_n": 1517,
+          "report_rps": 0.2148280197594452
+        },
+        {
+          "value": 0.0005,
+          "select_n": 2549,
+          "select_rps": 0.20036606926060047,
+          "report_n": 1517,
+          "report_rps": 0.2095121644741119
+        },
+        {
+          "value": 0.001,
+          "select_n": 2549,
+          "select_rps": 0.1997809828118395,
+          "report_n": 1517,
+          "report_rps": 0.20612530141159224
+        },
+        {
+          "value": 0.0018,
+          "select_n": 2549,
+          "select_rps": 0.19937101103304444,
+          "report_n": 1517,
+          "report_rps": 0.2037450162044983
+        },
+        {
+          "value": 0.003,
+          "select_n": 2549,
+          "select_rps": 0.19947972847633053,
+          "report_n": 1517,
+          "report_rps": 0.20260887769239513
+        },
+        {
+          "value": 0.005,
+          "select_n": 2549,
+          "select_rps": 0.20043575153426987,
+          "report_n": 1517,
+          "report_rps": 0.20270290386140374
+        }
+      ],
+      "selected": 0.0018,
+      "selection_seasons": [
+        "2015/16",
+        "2016/17",
+        "2017/18",
+        "2018/19",
+        "2019/20",
+        "2020/21",
+        "2021/22"
+      ],
+      "report_seasons": [
+        "2022/23",
+        "2023/24",
+        "2024/25",
+        "2025/26"
+      ]
+    },
+    "xg-rates-blend": {
+      "parameter": "blend",
+      "grid": [
+        {
+          "value": 0.0,
+          "select_n": 2549,
+          "select_rps": 0.20785457849299144,
+          "report_n": 1517,
+          "report_rps": 0.20731629247369593
+        },
+        {
+          "value": 0.25,
+          "select_n": 2549,
+          "select_rps": 0.20078085166856632,
+          "report_n": 1517,
+          "report_rps": 0.2016326644991939
+        },
+        {
+          "value": 0.5,
+          "select_n": 2549,
+          "select_rps": 0.19820601693876097,
+          "report_n": 1517,
+          "report_rps": 0.19979549202148542
+        },
+        {
+          "value": 0.75,
+          "select_n": 2549,
+          "select_rps": 0.19736565313883392,
+          "report_n": 1517,
+          "report_rps": 0.19900988217075175
+        },
+        {
+          "value": 1.0,
+          "select_n": 2549,
+          "select_rps": 0.19792203211544643,
+          "report_n": 1517,
+          "report_rps": 0.19895302348404967
+        }
+      ],
+      "selected": 0.75,
+      "selection_seasons": [
+        "2015/16",
+        "2016/17",
+        "2017/18",
+        "2018/19",
+        "2019/20",
+        "2020/21",
+        "2021/22"
+      ],
+      "report_seasons": [
+        "2022/23",
+        "2023/24",
+        "2024/25",
+        "2025/26"
+      ]
+    },
+    "xg-rates-rho": {
+      "parameter": "rho",
+      "grid": [
+        {
+          "value": -0.1,
+          "select_n": 2549,
+          "select_rps": 0.1977373992291409,
+          "report_n": 1517,
+          "report_rps": 0.19911007160562663
+        },
+        {
+          "value": -0.05,
+          "select_n": 2549,
+          "select_rps": 0.19751901168926622,
+          "report_n": 1517,
+          "report_rps": 0.19902945229658767
+        },
+        {
+          "value": 0.0,
+          "select_n": 2549,
+          "select_rps": 0.19736565313883392,
+          "report_n": 1517,
+          "report_rps": 0.19900988217075175
+        },
+        {
+          "value": 0.05,
+          "select_n": 2549,
+          "select_rps": 0.19727732357784392,
+          "report_n": 1517,
+          "report_rps": 0.19905136122811887
+        },
+        {
+          "value": 0.1,
+          "select_n": 2549,
+          "select_rps": 0.19725402300629627,
+          "report_n": 1517,
+          "report_rps": 0.19915388946868903
+        }
+      ],
+      "selected": 0.0,
+      "best_by_selection_rps": 0.1,
+      "null_value": 0.0,
+      "tolerance": 0.0005,
+      "parsimony_applied": true,
+      "selection_seasons": [
+        "2015/16",
+        "2016/17",
+        "2017/18",
+        "2018/19",
+        "2019/20",
+        "2020/21",
+        "2021/22"
+      ],
+      "report_seasons": [
+        "2022/23",
+        "2023/24",
+        "2024/25",
+        "2025/26"
+      ]
+    },
+    "xg-rates-xi": {
+      "parameter": "xi",
+      "grid": [
+        {
+          "value": 0.003,
+          "select_n": 2549,
+          "select_rps": 0.19792462733557512,
+          "report_n": 1517,
+          "report_rps": 0.19970663511805795
+        },
+        {
+          "value": 0.005,
+          "select_n": 2549,
+          "select_rps": 0.19792203211544643,
+          "report_n": 1517,
+          "report_rps": 0.19895302348404967
+        },
+        {
+          "value": 0.008,
+          "select_n": 2549,
+          "select_rps": 0.19879031561287122,
+          "report_n": 1517,
+          "report_rps": 0.19973268122214713
+        },
+        {
+          "value": 0.012,
+          "select_n": 2549,
+          "select_rps": 0.20047116940132279,
+          "report_n": 1517,
+          "report_rps": 0.2015312617025379
+        },
+        {
+          "value": 0.02,
+          "select_n": 2549,
+          "select_rps": 0.2039061377658889,
+          "report_n": 1517,
+          "report_rps": 0.2059007547312082
+        }
+      ],
+      "selected": 0.005,
+      "selection_seasons": [
+        "2015/16",
+        "2016/17",
+        "2017/18",
+        "2018/19",
+        "2019/20",
+        "2020/21",
+        "2021/22"
+      ],
+      "report_seasons": [
+        "2022/23",
+        "2023/24",
+        "2024/25",
+        "2025/26"
+      ]
+    }
   }
 }

@@ -1,0 +1,60 @@
+{
+  "parameter": "rho",
+  "grid": [
+    {
+      "value": -0.1,
+      "select_n": 2549,
+      "select_rps": 0.1977373992291409,
+      "report_n": 1517,
+      "report_rps": 0.19911007160562663
+    },
+    {
+      "value": -0.05,
+      "select_n": 2549,
+      "select_rps": 0.19751901168926622,
+      "report_n": 1517,
+      "report_rps": 0.19902945229658767
+    },
+    {
+      "value": 0.0,
+      "select_n": 2549,
+      "select_rps": 0.19736565313883392,
+      "report_n": 1517,
+      "report_rps": 0.19900988217075175
+    },
+    {
+      "value": 0.05,
+      "select_n": 2549,
+      "select_rps": 0.19727732357784392,
+      "report_n": 1517,
+      "report_rps": 0.19905136122811887
+    },
+    {
+      "value": 0.1,
+      "select_n": 2549,
+      "select_rps": 0.19725402300629627,
+      "report_n": 1517,
+      "report_rps": 0.19915388946868903
+    }
+  ],
+  "selected": 0.0,
+  "best_by_selection_rps": 0.1,
+  "null_value": 0.0,
+  "tolerance": 0.0005,
+  "parsimony_applied": true,
+  "selection_seasons": [
+    "2015/16",
+    "2016/17",
+    "2017/18",
+    "2018/19",
+    "2019/20",
+    "2020/21",
+    "2021/22"
+  ],
+  "report_seasons": [
+    "2022/23",
+    "2023/24",
+    "2024/25",
+    "2025/26"
+  ]
+}

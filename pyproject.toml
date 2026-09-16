@@ -1,8 +1,9 @@
 [project]
-name = "epl-models"
+name = "pl-forecast"
 version = "0.1.0"
 description = "Calibrated season-long forecasts for the Premier League table"
 readme = "README.md"
+license = "MIT"
 requires-python = ">=3.12"
 dependencies = [
     "duckdb>=1.1",

@@ -12,7 +12,6 @@ from typing import Any
 from plforecast.evaluate.calibration import OUTCOME_NAMES
 
 FLOOR_MODEL = "poisson"
-SHIPPED_MODEL = "dixon-coles"
 HEADLINE_MARKET = "market (shin)"
 MARKET_STRETCH_GAP = 0.005  # design.md 1.3
 
@@ -34,6 +33,7 @@ def _label(model: str) -> str:
     return {
         "poisson": "`PoissonModel` (floor)",
         "dixon-coles": "`DixonColesModel`",
+        "xg-rates": "`XGRateModel`",
         "market (shin)": "Market, Shin de-vig",
         "market (multiplicative)": "Market, multiplicative de-vig",
     }.get(model, f"`{model}`")
@@ -70,20 +70,70 @@ def _calibration_table(rows: list[dict[str, Any]]) -> tuple[str, int]:
     return "\n".join(lines), misses
 
 
+def _season_level_table(summary: list[dict[str, Any]]) -> str:
+    lines = [
+        "| Cutoff (matches played) | Model | Seasons | Position RPS | Title log loss "
+        "| Top-four log loss | Relegation log loss |",
+        "| --- | --- | --- | --- | --- | --- | --- |",
+    ]
+    for row in summary:
+        lines.append(
+            f"| {row['cutoff']} | {_label(row['model'])} | {row['n_seasons']} | "
+            f"{row['position_rps']:.4f} | {row['title_log_loss']:.3f} | "
+            f"{row['top_four_log_loss']:.3f} | {row['relegation_log_loss']:.3f} |"
+        )
+    return "\n".join(lines)
+
+
+def _tuning_section(tuning: Mapping[str, Any]) -> str:
+    if not tuning:
+        return (
+            "No tuning run has been recorded yet; the shipped hyperparameters are the "
+            "config defaults (`config.py`)."
+        )
+    parts = []
+    for key, run in tuning.items():
+        parsimony = (
+            f" The lowest selection RPS was at {run['best_by_selection_rps']}, within "
+            f"{run['tolerance']} of the null value {run['null_value']}, so the null value "
+            "is selected (parsimony rule)."
+            if run.get("parsimony_applied")
+            else ""
+        )
+        lines = [
+            f"**{key}** (`{run['parameter']}`): selected on "
+            f"{run['selection_seasons'][0]} to {run['selection_seasons'][-1]}, reported on "
+            f"{run['report_seasons'][0]} to {run['report_seasons'][-1]}. "
+            f"Selected value: **{run['selected']}**.{parsimony}",
+            "",
+            "| Value | Selection RPS | Selection n | Report RPS | Report n |",
+            "| --- | --- | --- | --- | --- |",
+        ]
+        for row in run["grid"]:
+            mark = " (selected)" if row["value"] == run["selected"] else ""
+            lines.append(
+                f"| {row['value']}{mark} | {row['select_rps']:.4f} | {row['select_n']:,} | "
+                f"{row['report_rps']:.4f} | {row['report_n']:,} |"
+            )
+        parts.append("\n".join(lines))
+    return "\n\n".join(parts)
+
+
 def render_markdown(report: Mapping[str, Any]) -> str:
     window = report["window"]
     coverage = report["coverage"]
     primary = {r["model"]: r for r in report["primary"]}
     models = [r["model"] for r in report["primary"]]
+    shipped_name = report["shipped_model"]
 
     floor = primary[FLOOR_MODEL]
-    shipped = primary[SHIPPED_MODEL]
+    shipped = primary[shipped_name]
     market = primary[HEADLINE_MARKET]
     beats_floor = shipped["rps"] < floor["rps"]
     gap = shipped["rps"] - market["rps"]
 
-    unrateable = coverage["unrateable"][SHIPPED_MODEL]
-    warmup = coverage["warmup_excluded"][SHIPPED_MODEL]
+    unrateable = coverage["unrateable"][shipped_name]
+    warmup = coverage["warmup_excluded"][shipped_name]
     n_intersection = coverage["intersection"]
     sources = coverage["benchmark_by_source"]
     source_text = ", ".join(f"{name} {n:,}" for name, n in sources.items())
@@ -92,7 +142,7 @@ def render_markdown(report: Mapping[str, Any]) -> str:
         sorted(
             {
                 m["home_club_id"] + "/" + m["away_club_id"]
-                for m in coverage["unrateable_matches"][SHIPPED_MODEL]
+                for m in coverage["unrateable_matches"][shipped_name]
             }
         )
     )
@@ -115,7 +165,7 @@ def render_markdown(report: Mapping[str, Any]) -> str:
     calibration_sections = []
     total_misses = {}
     for outcome in ("pooled", *OUTCOME_NAMES):
-        rows = [r for r in report["calibration"][SHIPPED_MODEL] if r["outcome"] == outcome]
+        rows = [r for r in report["calibration"][shipped_name] if r["outcome"] == outcome]
         table, misses = _calibration_table(rows)
         total_misses[outcome] = (misses, len(rows))
         title = "All outcomes pooled" if outcome == "pooled" else f"{outcome.title()} only"
@@ -125,13 +175,18 @@ def render_markdown(report: Mapping[str, Any]) -> str:
         f"{name}: {misses} of {n} buckets outside" for name, (misses, n) in total_misses.items()
     )
 
+    ranking = ", ".join(
+        f"{_label(m)} {primary[m]['rps']:.4f}"
+        for m in sorted(
+            (m for m in models if not m.startswith("market")), key=lambda m: primary[m]["rps"]
+        )
+    )
     verdict = (
-        f"**{_label(SHIPPED_MODEL)} beats the Poisson floor on held-out RPS "
-        f"({shipped['rps']:.4f} < {floor['rps']:.4f}) and ships**, per the model ladder's "
-        "gate (design.md section 6.2)."
+        f"**{_label(shipped_name)} has the best held-out RPS of the non-market models "
+        f"({ranking}) and ships**, per the model ladder's gate (design.md section 6.2): "
+        "each rung must beat the one before it on identical rows."
         if beats_floor
-        else f"**{_label(SHIPPED_MODEL)} does not beat the Poisson floor "
-        f"({shipped['rps']:.4f} >= {floor['rps']:.4f}) and does not ship.**"
+        else f"**No model beats the Poisson floor ({ranking}); nothing above the floor ships.**"
     )
     market_verdict = (
         f"**Neither model beats the market.** The shipped model's RPS gap to the Shin "
@@ -141,6 +196,12 @@ def render_markdown(report: Mapping[str, Any]) -> str:
         else f"**The shipped model beats the market** by {-gap:.4f} RPS."
     )
     stretch = "met" if gap <= MARKET_STRETCH_GAP else "not met"
+
+    season_table = (
+        _season_level_table(report["season_level"]["summary"])
+        if report["season_level"]["summary"]
+        else "Not run in this report (`plforecast evaluate --no-season-level`)."
+    )
 
     return f"""# Evaluation
 
@@ -195,7 +256,7 @@ Per season, primary rows, mean RPS:
 
 ## Calibration
 
-`{SHIPPED_MODEL}` reliability curves on the primary rows (`evaluate/calibration.py`,
+`{shipped_name}` reliability curves on the primary rows (`evaluate/calibration.py`,
 10 buckets, Wilson score 95% confidence intervals). A bucket is marked *outside* when
 the mean predicted probability falls outside the empirical frequency's interval.
 
@@ -207,13 +268,27 @@ The pooled curve is the headline reliability diagram (design.md section 8.1). Th
 per-outcome curves exist because pooling hides class-specific error: Poisson-family
 models are known to misprice draws, and the draw curve is where to look for it.
 
+## Season-level evaluation
+
+Design.md section 8.1's product-level check (`evaluate/season.py`): for every completed
+season in the window, the rest of the season is simulated from a frozen cutoff
+({report["season_level"]["simulations"]:,} simulations, the realised results up to the cutoff
+as played matches, the unplayed round-robin pairs as remaining fixtures) and the position
+distribution is scored against the realised final table. Position RPS treats positions
+as ordered, so an off-by-one miss costs less than an off-by-ten miss; lower is better for
+every column.
+
+{season_table}
+
+## Hyperparameter tuning
+
+{_tuning_section(report["tuning"])}
+
 ## What this doesn't cover yet
 
-- **Season-level evaluation** (realised final position vs predicted position
-  distribution, design.md section 8.1): story C-07.
 - **The hierarchical model** (design.md section 6.2, rung 3) is not built.
-- **`xi` tuning** (story C-03): the shipped Dixon-Coles uses the paper's 0.0018 until
-  the grid search lands; this file will then show the grid.
+- **The promoted-club prior** is not yet part of the backtest; its effect is only
+  visible in the live forecast (story C-08).
 """
 
 
@@ -222,6 +297,7 @@ def render_readme_table(report: Mapping[str, Any]) -> str:
     model and the headline market."""
     primary = {r["model"]: r for r in report["primary"]}
     lines = ["| Model | Mean RPS |", "| --- | --- |"]
-    for model in (FLOOR_MODEL, SHIPPED_MODEL, HEADLINE_MARKET):
+    non_market = [m for m in primary if not m.startswith("market")]
+    for model in (*non_market, HEADLINE_MARKET):
         lines.append(f"| {_label(model)} | {primary[model]['rps']:.4f} |")
     return "\n".join(lines)

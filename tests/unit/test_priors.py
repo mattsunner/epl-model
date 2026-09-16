@@ -5,10 +5,13 @@ import polars as pl
 import pytest
 
 from plforecast.features.priors import (
+    PromotedClubPrior,
     SurvivalZoneReference,
     build_prior,
     build_survival_zone_reference,
+    effective_sample_size,
     needs_prior,
+    prior_pseudo_matches,
 )
 from plforecast.simulate.competition import CompetitionConfig
 
@@ -41,6 +44,19 @@ def test_needs_prior_false_above_threshold():
     ]
     matches = _matches(rows)
     assert needs_prior("ipswich", matches, min_matches=38) is False
+
+
+def test_needs_prior_counts_decayed_evidence_when_given_xi():
+    # A full season played ten years ago is worth nothing under decay.
+    rows = [
+        (f"m{i}", "2016/17", date(2016, 8, 10) + timedelta(days=i), "hull", "arsenal", 1, 1)
+        for i in range(38)
+    ]
+    matches = _matches(rows)
+    assert needs_prior("hull", matches, min_matches=19) is False  # raw count: 38
+    assert needs_prior("hull", matches, min_matches=19, as_of=date(2026, 9, 16), xi=0.0018)
+    # The same season played last year still counts for most of its matches.
+    assert needs_prior("hull", matches, min_matches=19, as_of=date(2017, 6, 1), xi=0.0018) is False
 
 
 def test_needs_prior_false_for_a_club_never_mentioned():
@@ -141,3 +157,56 @@ def test_build_prior_rejects_out_of_range_weight():
     )
     with pytest.raises(ValueError, match="external_weight"):
         build_prior("x", reference, external_rating={"home_attack": 2.0}, external_weight=1.5)
+
+
+def _prior(std: float = 0.3) -> PromotedClubPrior:
+    return PromotedClubPrior(
+        club_id="coventry",
+        home_attack_mean=1.1,
+        home_attack_std=std,
+        home_defence_mean=1.4,
+        home_defence_std=std,
+        away_attack_mean=0.8,
+        away_attack_std=std,
+        away_defence_mean=1.7,
+        away_defence_std=std,
+    )
+
+
+def test_effective_sample_size_shrinks_with_prior_width_and_is_clamped():
+    assert effective_sample_size(_prior(std=0.3)) > effective_sample_size(_prior(std=0.6))
+    assert effective_sample_size(_prior(std=10.0)) == 4.0  # floor
+    assert effective_sample_size(_prior(std=0.01)) == 38.0  # cap
+
+
+def test_prior_pseudo_matches_alternate_venue_and_carry_the_prior_as_xg():
+    opponents = ["arsenal", "chelsea", "leeds", "coventry"]  # own id must be skipped
+    rows = prior_pseudo_matches(
+        _prior(), opponents=opponents, season="2026/27", as_of=date(2026, 9, 16), seed=1
+    )
+
+    assert rows.height == round(effective_sample_size(_prior()))
+    home = rows.filter(pl.col("home_club_id") == "coventry")
+    away = rows.filter(pl.col("away_club_id") == "coventry")
+    assert abs(home.height - away.height) <= 1
+    assert set(home["away_club_id"].to_list()) <= {"arsenal", "chelsea", "leeds"}
+    assert home["home_xg"].to_list() == pytest.approx([1.1] * home.height)
+    assert home["away_xg"].to_list() == pytest.approx([1.4] * home.height)
+    assert away["away_xg"].to_list() == pytest.approx([0.8] * away.height)
+    assert rows["home_goals"].dtype == pl.Int64
+    assert set(rows["result"].to_list()) <= {"H", "D", "A"}
+    assert rows["match_id"].n_unique() == rows.height
+
+
+def test_prior_pseudo_matches_are_reproducible_by_seed():
+    kwargs = dict(opponents=["arsenal", "chelsea"], season="2026/27", as_of=date(2026, 9, 16))
+    a = prior_pseudo_matches(_prior(), seed=7, **kwargs)
+    b = prior_pseudo_matches(_prior(), seed=7, **kwargs)
+    assert a.equals(b)
+
+
+def test_prior_pseudo_matches_need_a_real_opponent():
+    with pytest.raises(ValueError, match="real opponent"):
+        prior_pseudo_matches(
+            _prior(), opponents=["coventry"], season="2026/27", as_of=date(2026, 9, 16)
+        )

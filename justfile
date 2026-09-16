@@ -38,6 +38,9 @@ evaluate:
 render-evaluation:
     uv run plforecast render-evaluation
 
+tune model="dixon-coles" parameter="xi":
+    uv run plforecast tune --model {{model}} --parameter {{parameter}}
+
 forecast:
     uv run plforecast forecast
 

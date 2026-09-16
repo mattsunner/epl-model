@@ -572,6 +572,7 @@ def reconcile_current_season(conn: duckdb.DuckDBPyConnection) -> dict[str, int]:
 
 
 def curate_all(conn: duckdb.DuckDBPyConnection) -> None:
+    conn.execute("DROP TABLE IF EXISTS mart_fixtures")  # renamed stg_fixtures (story B-09)
     dimension = load_club_dimension()
     curate_club_dimension(conn, dimension)
     curate_club_season_membership(conn)

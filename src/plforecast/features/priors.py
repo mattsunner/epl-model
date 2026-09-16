@@ -1,50 +1,27 @@
-"""Promoted-club prior construction (design.md section 6.3). For a club with no
-usable top-flight history in the backfill window -- a genuinely new promotion, e.g.
-Coventry for 2026/27 -- features/strength.py's build_club_strength() has nothing to
-compute from at all: the club simply doesn't appear in its output. Confirmed for real
-in this project: the season simulation validated in a prior session failed outright the
-moment a remaining fixture involved Coventry, and the evaluation harness's backtest
-independently hits the same wall for every round-1 fixture of the very first season in
-the window (design.md section 8.2's backtest window starts at 2015/16, where by
-definition no club has any prior-window history yet). This module is what fills that
-gap: a prior distribution over attack/defence strength, anchored on the historical
-record rather than assumed from nothing.
+"""Promoted-club prior construction (design.md section 6.3, ADR 0006).
 
-A club with SOME recent top-flight history (Ipswich, which played 2024/25) should be
-modelled from that history directly via features/strength.py, not pooled into this
-no-data prior alongside genuinely blank clubs -- design.md section 6.3 is explicit
-about this. `needs_prior()` is the gate: it decides which clubs need a prior at all,
-separately from constructing one correctly.
+A club with no usable top-flight history in the backfill window (Coventry for 2026/27)
+has nothing for the match model to fit. This module builds a prior over its attack and
+defence rates from the empirical record of "survival zone" clubs (15th to 18th in every
+completed season in the window), with the observed variance across those club-seasons
+rather than a point estimate, and delivers it to the model layer as pseudo-observations
+(`prior_pseudo_matches`, story C-08): synthetic matches against the real clubs in the
+fixture list, as many as the prior's width is worth in evidence.
 
-**The anchor, in rate-space, not points-space.** Design.md's own cited anchor -- the
-average points total for the club finishing 18th across the 22 Premier League seasons
-preceding this project's 2015/16 backfill window is 33.8 -- predates every season this
-pipeline has ingested, so it cannot be recomputed from our data, and it is expressed in
-points, not the attack/defence goal rates the model layer actually consumes. Rather
-than inventing an unverified points-to-rates conversion, this module builds the closest
-real, directly comparable anchor from data we actually have: the empirical attack and
-defence rate profile of clubs that finished in the "survival zone" (15th-18th, i.e.
-competitive enough to stay up but not comfortably) in every completed season in the
-window. `build_survival_zone_reference()` also reports the mean points of that same
-cohort as a cross-check against design.md's 33.8 -- not required to match exactly,
-since it is a different (more recent, differently composed) set of seasons, but a
-useful sanity signal that the two anchors are in the same ballpark.
+A club with SOME recent top-flight history (Ipswich, 2024/25) is modelled from that
+history; `needs_prior()` is the gate.
 
-**Real variance, not a point estimate** (design.md section 6.3: "the empirical record
-is unstable enough that a tight prior is indefensible" -- all six promoted clubs
-relegated in both 2023/24 and 2024/25, then Sunderland finishing 7th on 54 points in
-2025/26). The survival-zone reference reports the standard deviation of each rate
-across every observed club-season, not just its mean, and `build_prior()` propagates
-that width forward rather than collapsing it.
+The anchor is in rate space, not points space. Design.md's cited figure (33.8 points
+for 18th place over 22 seasons) predates the ingested window and is in points; the
+survival-zone reference reports its own mean points as a cross-check.
 
-**Blending an external rating** (ClubElo + squad market value, design.md section 6.3)
-is structurally supported by `build_prior()`'s `external_rating`/`external_weight`
-parameters, but not exercisable with real data yet -- neither source is ingested. Every
-club needing a prior today (Coventry) gets the survival-zone anchor alone, unshrunk.
+Blending an external rating (ClubElo, squad value) is supported by `build_prior()`'s
+`external_rating`/`external_weight` but has no data source yet (story C-16).
 """
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import cast
@@ -54,7 +31,8 @@ import polars as pl
 
 from plforecast.features.strength import build_club_strength
 from plforecast.simulate.competition import PREMIER_LEAGUE, CompetitionConfig
-from plforecast.simulate.tiebreak import ClubSeasonResult, PremierLeagueTiebreaks, TiebreakRules
+from plforecast.simulate.standings import season_standings
+from plforecast.simulate.tiebreak import PremierLeagueTiebreaks, TiebreakRules
 
 _RATE_FIELDS = ("home_attack", "home_defence", "away_attack", "away_defence")
 
@@ -86,66 +64,36 @@ class PromotedClubPrior:
     away_defence_std: float
 
 
-def needs_prior(club_id: str, historical_matches: pl.DataFrame, *, min_matches: int = 38) -> bool:
-    """True if `club_id` has fewer than one season's worth of matches (`min_matches`,
-    default 38 -- a full round-robin season, design.md section 6.3's own example of
-    "enough": Ipswich's 2024/25 season) in `historical_matches` (shaped like
-    stg_matches). A club below the threshold should get a prior from this module
-    rather than features/strength.py's fallback, which has nothing to compute from at
-    all once matches drop to zero, and too little to be stable well before that."""
+def needs_prior(
+    club_id: str,
+    historical_matches: pl.DataFrame,
+    *,
+    min_matches: float = 19,
+    as_of: date | None = None,
+    xi: float = 0.0,
+) -> bool:
+    """True if `club_id` has less than `min_matches` worth of evidence in
+    `historical_matches` (shaped like stg_matches).
+
+    Evidence is counted the way the models weight it: with `xi` and `as_of` given, each
+    match counts `exp(-xi * days_since)`, so a promoted club whose only top-flight
+    season was years ago (Hull, 2016/17) is recognised as nearly data-free, and a club
+    with one recent season (Ipswich, 2024/25) is shrunk toward the prior in proportion
+    to how much its evidence has decayed rather than pooled with blank clubs. With
+    `xi = 0` every match counts once. The default threshold is half a season."""
     appearances = historical_matches.filter(
         (pl.col("home_club_id") == club_id) | (pl.col("away_club_id") == club_id)
     )
-    return appearances.height < min_matches
-
-
-def _club_season_standings(season_matches: pl.DataFrame) -> list[ClubSeasonResult]:
-    home = (
-        season_matches.group_by("home_club_id")
-        .agg(
-            pl.col("home_goals").sum().alias("gf"),
-            pl.col("away_goals").sum().alias("ga"),
-            pl.when(pl.col("home_goals") > pl.col("away_goals"))
-            .then(3)
-            .when(pl.col("home_goals") < pl.col("away_goals"))
-            .then(0)
-            .otherwise(1)
-            .sum()
-            .alias("points"),
+    if xi <= 0 or as_of is None:
+        return appearances.height < min_matches
+    weights = (
+        appearances.select(
+            ((pl.lit(as_of) - pl.col("date")).dt.total_days().cast(pl.Float64) * -xi).exp()
         )
-        .rename({"home_club_id": "club_id"})
+        .to_series()
+        .sum()
     )
-    away = (
-        season_matches.group_by("away_club_id")
-        .agg(
-            pl.col("away_goals").sum().alias("gf"),
-            pl.col("home_goals").sum().alias("ga"),
-            pl.when(pl.col("away_goals") > pl.col("home_goals"))
-            .then(3)
-            .when(pl.col("away_goals") < pl.col("home_goals"))
-            .then(0)
-            .otherwise(1)
-            .sum()
-            .alias("points"),
-        )
-        .rename({"away_club_id": "club_id"})
-    )
-
-    combined = (
-        pl.concat([home, away])
-        .group_by("club_id")
-        .agg(pl.col("gf").sum(), pl.col("ga").sum(), pl.col("points").sum())
-        .with_columns((pl.col("gf") - pl.col("ga")).alias("gd"))
-    )
-    return [
-        ClubSeasonResult(
-            club_id=row["club_id"],
-            points=row["points"],
-            goal_difference=row["gd"],
-            goals_for=row["gf"],
-        )
-        for row in combined.iter_rows(named=True)
-    ]
+    return float(weights) < min_matches
 
 
 def build_survival_zone_reference(
@@ -174,7 +122,7 @@ def build_survival_zone_reference(
     points_by_observation = []
     for season in completed_seasons["season"].unique(maintain_order=True).to_list():
         season_matches = completed_seasons.filter(pl.col("season") == season)
-        standings = _club_season_standings(season_matches)
+        standings = season_standings(season_matches)
         standings_by_id = {s.club_id: s for s in standings}
         ranked = tiebreak_rules.rank(standings, season_matches, rng=rng)
 
@@ -207,6 +155,86 @@ def build_survival_zone_reference(
         away_defence_mean=means["away_defence"],
         away_defence_std=stds["away_defence"],
     )
+
+
+def effective_sample_size(
+    prior: PromotedClubPrior, *, floor: float = 4.0, cap: float = 38.0
+) -> float:
+    """How many matches of evidence the prior is worth. For a Poisson rate with mean m
+    observed over n matches the standard error is sqrt(m / n); setting that equal to the
+    prior's spread s gives n = m / s^2. Averaged over the four rate fields and clamped so
+    a degenerate reference can neither swamp real results nor vanish."""
+    values = []
+    for field in _RATE_FIELDS:
+        mean = getattr(prior, f"{field}_mean")
+        std = getattr(prior, f"{field}_std")
+        if std and std > 0 and mean > 0:
+            values.append(mean / std**2)
+    if not values:
+        return floor
+    return float(min(max(sum(values) / len(values), floor), cap))
+
+
+def prior_pseudo_matches(
+    prior: PromotedClubPrior,
+    *,
+    opponents: Sequence[str],
+    season: str,
+    as_of: date,
+    seed: int = 0,
+) -> pl.DataFrame:
+    """Synthetic stg_matches-shaped rows expressing `prior` as evidence, spread over
+    real `opponents` (alternating home and away, opponents cycled in seeded order).
+
+    Real opponents matter: a phantom opponent played only by this club is not
+    identifiable from it, and a joint fit can put every pseudo-match into the phantom's
+    parameters while leaving the club's untouched. Real clubs' ratings are pinned by
+    their own results, so the club's fitted attack and defence land at the prior.
+
+    The club scores at its prior attack rate and concedes at its prior defence rate
+    regardless of opponent, which is what "prior relative to an average opponent"
+    means. xG is the prior mean exactly (no noise); goals are seeded Poisson draws from
+    it, since the goals-based models need integers. Row count is
+    `effective_sample_size(prior)` rounded, so a wide prior contributes little; with 19
+    opponents that is under one pseudo-match each, so no opponent's own rating moves.
+    """
+    others = [club for club in opponents if club != prior.club_id]
+    if not others:
+        raise ValueError("prior_pseudo_matches needs at least one real opponent")
+    rng = np.random.default_rng(seed)
+    order = [others[i] for i in rng.permutation(len(others))]
+    n = round(effective_sample_size(prior))
+    rows = []
+    for k in range(n):
+        opponent = order[k % len(order)]
+        at_home = k % 2 == 0
+        if at_home:
+            home_id, away_id = prior.club_id, opponent
+            home_xg, away_xg = prior.home_attack_mean, prior.home_defence_mean
+        else:
+            home_id, away_id = opponent, prior.club_id
+            home_xg, away_xg = prior.away_defence_mean, prior.away_attack_mean
+        home_goals = int(rng.poisson(home_xg))
+        away_goals = int(rng.poisson(away_xg))
+        rows.append(
+            {
+                "match_id": f"prior-{prior.club_id}-{k:02d}",
+                "season": season,
+                "date": as_of,
+                "home_club_id": home_id,
+                "away_club_id": away_id,
+                "home_goals": home_goals,
+                "away_goals": away_goals,
+                "home_xg": float(home_xg),
+                "away_xg": float(away_xg),
+                "result": "H"
+                if home_goals > away_goals
+                else "A"
+                if home_goals < away_goals
+                else "D",
+            }
+        )
+    return pl.DataFrame(rows)
 
 
 def build_prior(

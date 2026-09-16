@@ -36,6 +36,16 @@ Sunderland near-certain relegation.
   toward the prior only in proportion to how much that data has decayed; a club whose
   only top-flight season was years ago (Hull, 2016/17) is treated as nearly data-free,
   which it is under decay. The threshold is half a season of effective matches.
+  **The gate's decay rate is its own constant (`PRIOR_GATE_XI`), never a fitted
+  model's own `xi`.** Tried the obvious version first -- pass the shipped model's
+  fitting decay straight through -- and it flagged every established club, not just
+  the genuinely promoted ones: a fitting `xi` (0.0018-0.005/day) is tuned for
+  match-level rate smoothing, aggressive enough that even a club with hundreds of
+  matches across the whole backfill window has an effective count near a single
+  season's worth once decayed, so early in any season the gate caught Arsenal and
+  Chelsea alongside Coventry. `PRIOR_GATE_XI` (~6-year half-life) instead separates a
+  stale one-off season from a fresh one while leaving every continuously-active club
+  comfortably above the threshold.
 - **Delivery into the model layer**: as pseudo-observations appended to the fit frame
   (story C-08), rather than waiting for the hierarchical model. The count is the
   prior's effective sample size, `mean / std^2` averaged over the four rate fields and

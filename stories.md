@@ -799,6 +799,8 @@ outcomes; reported in evaluation.md; this becomes the gate for the hierarchical 
 
 **Status**: Done 16 Sep 2026: prior enters as pseudo-observations against real opponents (a phantom opponent was not identifiable); `needs_prior` counts decayed evidence. Coventry, Hull and Ipswich covered in the live forecast. Not yet in the backtest.
 
+**Correction, same day**: the gate initially reused the shipped model's own fitting `xi` (0.005 for xg-rates) as the decay rate, which flagged every established club -- Arsenal's 422 historical matches decay to an effective ~17 under that rate, below the 19-match threshold, so 20 of 20 current clubs got prior pseudo-matches injected. Fixed with a dedicated `PRIOR_GATE_XI` (~6-year half-life, ADR 0006) separate from any model's fitting decay; the live forecast now correctly flags only Coventry and Hull (Ipswich's one recent season carries enough weight at this rate to stand on its own).
+
 Evidence: `features/priors.py` builds a prior nothing consumes; README says the two
 shipped models "don't have a mechanism to accept a prior". They do, indirectly: penaltyblog
 takes per-row `weights`, so a prior can enter as pseudo-observations.

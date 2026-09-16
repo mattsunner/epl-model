@@ -275,6 +275,7 @@ def forecast(
     from plforecast.config import settings
     from plforecast.entities.clubs import load_club_dimension
     from plforecast.features.priors import (
+        PRIOR_GATE_XI,
         build_prior,
         build_survival_zone_reference,
         needs_prior,
@@ -360,12 +361,17 @@ def forecast(
     # reference, so it is rated from evidence rather than a handful of matches.
     completed = training.filter(pl.col("season") != season_label_)
     fixture_clubs = sorted(set(fixtures["home_club_id"]) | set(fixtures["away_club_id"]))
-    # Count each club's evidence with the model's own decay rate (Poisson has none).
-    decay_xi = float(getattr(factories[model](), "xi", 0.0))
+    # PRIOR_GATE_XI, not the fitted model's own xi: a match model's fitting decay is
+    # tuned for rate estimation and is aggressive enough that even a club with
+    # hundreds of historical matches has an effective count near the threshold the
+    # moment a season is a few gameweeks old (verified: at xi=0.005 every established
+    # club was flagged). The gate needs a much gentler decay to do its actual job --
+    # separating a stale one-off season from a fresh one without penalising clubs that
+    # have simply been in the league the whole time.
     needing_prior = [
         club
         for club in fixture_clubs
-        if needs_prior(club, training, as_of=generated_date, xi=decay_xi)
+        if needs_prior(club, training, as_of=generated_date, xi=PRIOR_GATE_XI)
     ]
     if needing_prior:
         reference = build_survival_zone_reference(completed)

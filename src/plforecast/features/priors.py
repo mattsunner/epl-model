@@ -36,6 +36,20 @@ from plforecast.simulate.tiebreak import PremierLeagueTiebreaks, TiebreakRules
 
 _RATE_FIELDS = ("home_attack", "home_defence", "away_attack", "away_defence")
 
+# Decay rate for needs_prior's evidence gate -- deliberately much gentler than any
+# match model's own fitting xi (0.0018-0.005/day). A fitting xi is tuned to smooth
+# *rate estimation* and is aggressive enough that even a club with hundreds of matches
+# spread across the whole backfill window has an effective count near a single
+# season's worth once decayed -- using it as the sufficiency threshold's own decay rate
+# was tried and flagged essentially every established club as prior-needing the moment
+# a season is only a few gameweeks old, which is wrong (verified against real data: at
+# xi=0.005, Arsenal's 422 historical matches decay to an effective ~17, under the
+# default 19-match threshold). PRIOR_GATE_XI's ~6-year half-life instead separates a
+# stale one-off season (Hull's 2016/17: effective ~17 today) from a recent one
+# (Ipswich's 2024/25: effective ~36) while leaving every continuously-active club's
+# effective count in the hundreds.
+PRIOR_GATE_XI = 0.0003
+
 
 @dataclass(frozen=True, slots=True)
 class SurvivalZoneReference:

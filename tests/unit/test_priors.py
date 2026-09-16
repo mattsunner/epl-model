@@ -5,6 +5,7 @@ import polars as pl
 import pytest
 
 from plforecast.features.priors import (
+    PRIOR_GATE_XI,
     PromotedClubPrior,
     SurvivalZoneReference,
     build_prior,
@@ -57,6 +58,48 @@ def test_needs_prior_counts_decayed_evidence_when_given_xi():
     assert needs_prior("hull", matches, min_matches=19, as_of=date(2026, 9, 16), xi=0.0018)
     # The same season played last year still counts for most of its matches.
     assert needs_prior("hull", matches, min_matches=19, as_of=date(2017, 6, 1), xi=0.0018) is False
+
+
+def test_prior_gate_xi_does_not_flag_a_club_with_a_decade_of_continuous_history():
+    """Regression: a club present in every season of a long backfill window must not
+    be flagged just because the gate applies decay. This is the exact failure mode a
+    fitting-model xi (0.005) produced in the live forecast -- an established club's
+    hundreds of historical matches decayed to an effective count near the threshold
+    the moment a season was only a few gameweeks old."""
+    rows = [
+        (
+            f"m{season}-{i}",
+            f"{2015 + season}/{16 + season:02d}",
+            date(2015 + season, 8, 10) + timedelta(days=7 * i),
+            "arsenal",
+            "opponent",
+            2,
+            1,
+        )
+        for season in range(10)
+        for i in range(38)
+    ]
+    matches = _matches(rows)
+
+    assert needs_prior("arsenal", matches, as_of=date(2026, 9, 16), xi=PRIOR_GATE_XI) is False
+
+
+def test_prior_gate_xi_still_flags_a_club_whose_only_season_is_a_decade_old():
+    rows = [
+        (
+            f"m0-{i}",
+            "2016/17",
+            date(2016, 8, 13) + timedelta(days=7 * i),
+            "hull",
+            "opponent",
+            1,
+            1,
+        )
+        for i in range(38)
+    ]
+    matches = _matches(rows)
+
+    assert needs_prior("hull", matches, as_of=date(2026, 9, 16), xi=PRIOR_GATE_XI) is True
 
 
 def test_needs_prior_false_for_a_club_never_mentioned():

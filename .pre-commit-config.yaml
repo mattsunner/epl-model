@@ -1,22 +1,32 @@
+# Every hook runs the project's own toolchain via `uv run`, so pre-commit, `just check`
+# and CI execute the exact tool versions pinned in uv.lock. Remote-mirror hooks were
+# dropped because their pinned versions drifted from the lock file.
 repos:
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.8.4
+  - repo: local
     hooks:
-      - id: ruff
-        args: [--fix]
+      - id: ruff-check
+        name: ruff check
+        entry: uv run ruff check --fix
+        language: system
+        types_or: [python, pyi]
+        require_serial: true
       - id: ruff-format
-
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.13.0
-    hooks:
+        name: ruff format
+        entry: uv run ruff format
+        language: system
+        types_or: [python, pyi, markdown]
+        require_serial: true
       - id: mypy
-        additional_dependencies: [pydantic>=2, pandera, polars]
+        name: mypy (src, strict)
+        entry: uv run mypy src/
+        language: system
+        pass_filenames: false
         files: ^src/
-
-  - repo: https://github.com/kynan/nbstripout
-    rev: 0.8.1
-    hooks:
       - id: nbstripout
+        name: nbstripout
+        entry: uv run nbstripout
+        language: system
+        types: [jupyter]
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
@@ -24,3 +34,4 @@ repos:
       - id: check-yaml
       - id: end-of-file-fixer
       - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]

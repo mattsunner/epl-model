@@ -126,7 +126,8 @@ pl-forecast/
 │   ├── storage/
 │   │   ├── db.py                  # DuckDB connection; raw views recreated on connect (ADR 0002)
 │   │   ├── migrations/            # table migrations only; none yet
-│   │   └── curate.py              # raw -> dim_club, stg_*, mart_team_match; cross-source checks
+│   │   ├── curate.py              # raw -> dim_club, stg_*, mart_team_match; cross-source checks
+│   │   └── validate.py            # data-quality invariants over the live curated tables
 │   │
 │   ├── features/
 │   │   ├── strength.py            # decayed attack/defence rates, goals or xG
@@ -161,13 +162,13 @@ pl-forecast/
 │   │   ├── schema.py              # pydantic forecast and fixtures documents (ADR 0004)
 │   │   └── writer.py              # documents from a simulation; provenance; latest + stamped files
 │   │
-│   └── cli.py                     # typer: ingest, curate, evaluate, tune, forecast, validate-artifacts
+│   └── cli.py                     # typer: ingest, curate, evaluate, tune, forecast, validate, validate-artifacts
 │
 ├── tests/
 │   ├── unit/
 │   ├── fixtures/                  # small committed sample data, observed name/code sets
-│   ├── integration/               # planned (story A-17)
-│   └── golden/                    # planned (story A-17); determinism is asserted in unit tests
+│   ├── integration/               # tests/integration/test_pipeline.py: migrate/curate/validate/evaluate over tests/fixtures/integration_data/
+│   └── golden/                    # planned; determinism is asserted directly in unit tests instead (story A-17)
 │
 ├── data/                          # gitignored except .gitkeep and MANIFEST.md
 │   ├── raw/                       # immutable timestamped snapshots per source
@@ -588,7 +589,7 @@ No network access in CI. Ingest adapters are tested against committed fixture pa
 | Unit | Tiebreak ordering, alias resolution, RPS calculation, de-vigging, scoreline matrix normalisation |
 | Property | Simulation invariants from section 7.3 |
 | Golden | Fixed seed and fixed input produce a byte-identical artifact |
-| Integration | Full pipeline over a committed two-season fixture dataset |
+| Integration | `tests/integration/test_pipeline.py`: migrate, curate, validate, evaluate over a committed two-season, real-club fixture dataset |
 | Schema | Every committed artifact validates against its declared schema version |
 
 Tiebreak logic and the position matrix deserve the most test coverage. Both are easy to get subtly wrong and neither will fail loudly.

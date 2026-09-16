@@ -46,3 +46,6 @@ forecast:
 
 validate-artifacts:
     uv run plforecast validate-artifacts
+
+validate:
+    uv run plforecast validate

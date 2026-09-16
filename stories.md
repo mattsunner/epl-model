@@ -305,6 +305,8 @@ next to every `evaluate` and `forecast` output and embedded in the artifact prov
 
 ### A-17 · P2 · Recommendation · Untested plumbing
 
+**Status**: Done 16 Sep 2026: `tests/unit/test_ingest_base.py` (TTL cache hit/miss, politeness delay, write_snapshot contracts), `tests/unit/test_db.py` (migration/view idempotence, pre-existing), `tests/unit/test_cli.py` (CliRunner, pre-existing). `tests/integration/test_pipeline.py` runs migrate/curate/validate/evaluate over a committed real-club two-season fixture dataset (`tests/fixtures/integration_data/`). Golden byte-identical-artifact test deferred: determinism is instead asserted directly (`test_documents_are_deterministic_given_seed` in test_artifacts.py, `test_simulate_season_is_deterministic_given_a_seed` in test_engine.py), which is the same guarantee without a brittle fixed-file comparison.
+
 Evidence: no tests for `ingest/base.py` (TTL cache hit vs miss, politeness delay only on
 live fetch, `_meta.json` contents, never-overwrite), `storage/db.py` (migration order,
 idempotence, applied-set), or `cli.py` (typer `CliRunner`). design.md section 11.3 also
@@ -584,6 +586,8 @@ an aggregate of `df.hash_rows()` or CSV bytes); a test shows the hash is stable 
 writes and changes when one value changes.
 
 ### B-13 · P2 · Recommendation · A `validate` command for data-quality invariants
+
+**Status**: Done 16 Sep 2026: `plforecast validate` / `just validate` runs season round-robin shape, id uniqueness, no self-fixtures, result-vs-score, xG coverage, closing-odds coverage (report), club_id resolution against the live tables, and the B-07 reconciliation; exits non-zero naming every failed check. Also exercised in `tests/integration/test_pipeline.py`.
 
 **As** the operator, **I want** a single command that checks the curated tables after every
 curate, **so that** silent joins and coverage gaps are caught before a forecast is

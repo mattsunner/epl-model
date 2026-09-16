@@ -27,6 +27,7 @@ from four defeats alone; the prior is what stops a four-match sample deciding a
 uv sync
 uv run pre-commit install  # hooks run the same ruff/mypy that `just check` runs
 just bootstrap             # ingest all three sources, then curate (first run, ~2 min)
+just validate              # data-quality invariants over the curated tables
 just evaluate              # walk-forward backtest against the market baseline
 just check                 # lint, typecheck, test
 ```
@@ -34,7 +35,8 @@ just check                 # lint, typecheck, test
 `just bootstrap` is `just ingest-footballdata`, `just ingest-fpl`, `just ingest-understat`
 and `just curate` in that order. Raw views are (re)created on every database connection,
 so there is no separate migrate step; `just migrate` exists only to apply table
-migrations explicitly.
+migrations explicitly. `just curate` also writes `data/curate-manifest.json`: row counts
+and raw-snapshot lineage for every curated table.
 
 ## How it performs against the market
 

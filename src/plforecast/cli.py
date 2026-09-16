@@ -489,6 +489,32 @@ def forecast(
 
 
 @app.command()
+def validate() -> None:
+    """Run data-quality invariants over the curated tables (story B-13): round-robin
+    shape per completed season, id uniqueness, no self-fixtures, result-vs-score
+    agreement, xG coverage, closing-odds coverage (report only), every fact-table
+    club_id resolving to dim_club, and the FPL/football-data reconciliation. Exits
+    non-zero and prints every failed check if any invariant does not hold."""
+    from plforecast.storage.validate import ValidationFailed, run_validations
+
+    conn = connect()
+    try:
+        results = run_validations(conn, raise_on_failure=False)
+    finally:
+        conn.close()
+
+    for result in results:
+        mark = "OK  " if result.ok else "FAIL"
+        typer.echo(f"{mark} {result.name}: {result.detail}")
+
+    failed = [r for r in results if not r.ok]
+    if failed:
+        raise typer.Exit(code=1) from ValidationFailed(
+            "; ".join(f"{r.name}: {r.detail}" for r in failed)
+        )
+
+
+@app.command()
 def validate_artifacts(
     artifacts_dir: Annotated[Path, typer.Option(help="Directory of committed forecasts.")] = Path(
         "artifacts"

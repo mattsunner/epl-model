@@ -1,8 +1,21 @@
-"""Single configuration surface for the pipeline. Env vars use the PLFORECAST_ prefix."""
+"""Single configuration surface for the pipeline. Env vars use the PLFORECAST_ prefix.
+
+`settings` (module-level, built once at import) is the process-wide default and the
+right thing for a CLI command to read at its own entry point -- that is the injection
+boundary. Everything below that boundary (ingest Source classes, storage.db.connect,
+storage.curate's functions, derive_season_from_kickoffs) takes an explicit
+`config: Settings = settings` parameter instead of reaching for the global itself, so a
+caller (a test, or a future multi-tenant use) can override it (story A-14).
+`get_settings()` exists for the same reason `settings = Settings()` alone does not
+fully cover: an env var set after import (a test using monkeypatch.setenv then wanting
+a fresh read) is otherwise invisible, since the module-level `settings` was already
+built.
+"""
 
 from __future__ import annotations
 
 from datetime import date
+from functools import lru_cache
 from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -80,3 +93,13 @@ def season_code(start_year: int) -> str:
 
 
 settings = Settings()
+
+
+@lru_cache(maxsize=1)
+def get_settings() -> Settings:
+    """A cached, explicitly-constructed Settings -- for a call site that wants the
+    current settings without importing the eagerly-built module singleton (and so
+    that a test can call `get_settings.cache_clear()` after changing the environment
+    and get a fresh read, which mutating or reassigning the `settings` singleton
+    cannot offer since other modules already hold their own reference to it)."""
+    return Settings()

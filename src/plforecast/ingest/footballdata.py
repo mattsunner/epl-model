@@ -209,15 +209,15 @@ class FootballDataSource:
         return MatchSchema.validate(df)
 
 
-def ingest() -> None:
+def ingest(config: Settings = settings) -> None:
     """Full backfill: land every configured season as one immutable snapshot."""
-    source = FootballDataSource()
+    source = FootballDataSource(config)
     payload = source.fetch()
     df = source.parse(payload)
     write_snapshot(
         df,
         source=source.name,
         fetched_at=payload.fetched_at,
-        raw_dir=settings.raw_dir,
+        raw_dir=config.raw_dir,
         parts=payload.parts,
     )

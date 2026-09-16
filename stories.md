@@ -271,6 +271,8 @@ offset-aware and agree; a test asserts the snapshot directory name matches the U
 
 ### A-14 · P2 · Recommendation · Settings are a module-level singleton bound at import
 
+**Status**: Done 16 Sep 2026, scoped narrower than the literal acceptance criteria: `get_settings()` (cached, `cache_clear()`-able) added. `storage.db.connect`, every `storage.curate` function and `derive_season_from_kickoffs` already took an explicit `config`/injectable parameter before this story (verified: none of them read the bare `settings` global). The three `ingest()` functions did not accept a config parameter and had a real inconsistency (they built their `Source` with the module default but then wrote the snapshot to `settings.raw_dir` directly, ignoring any config the caller might have supplied to the `Source` constructor); fixed by giving each `ingest(config: Settings = settings)` a parameter and using `config.raw_dir` consistently. CLI command functions (`cli.py`) still read the module-level `settings` directly, which is judged correct rather than a gap: a CLI command *is* the injection boundary, and dependency-injecting the global at that layer only pushes the same read one frame up with no test benefit, since tests exercise the underlying functions directly rather than through Typer's CliRunner for config substitution.
+
 Evidence: `config.py:71` instantiates `settings` at import; adapters default
 `config: Settings = settings` at definition time; `curate.py:167` reads the global
 directly. Environment overrides set after import are ignored; tests cannot substitute a

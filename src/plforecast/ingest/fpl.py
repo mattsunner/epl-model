@@ -232,13 +232,13 @@ class FPLFixturesSource:
         return FixtureSchema.validate(df)
 
 
-def ingest() -> None:
+def ingest(config: Settings = settings) -> None:
     """Land all four FPL-derived raw tables as immutable snapshots."""
     for source in (
-        FPLTeamsSource(),
-        FPLPlayersSource(),
-        FPLFixturesSource(),
-        FPLEventsSource(),
+        FPLTeamsSource(config),
+        FPLPlayersSource(config),
+        FPLFixturesSource(config),
+        FPLEventsSource(config),
     ):
         payload = source.fetch()
         df = source.parse(payload)
@@ -246,6 +246,6 @@ def ingest() -> None:
             df,
             source=source.name,
             fetched_at=payload.fetched_at,
-            raw_dir=settings.raw_dir,
+            raw_dir=config.raw_dir,
             parts=payload.parts,
         )

@@ -864,6 +864,8 @@ home term over the decayed window, which approximates it. Not a defect; record i
 
 ### C-15 · P1 · Recommendation · Re-sequence the remaining 14 weeks
 
+**Status**: Phase 1 and Phase 2 done 16 Sep 2026 (all listed stories except the site-repo workflow, which lives outside this repository). Phase 3 (hierarchical model, rung 3) not started; the shipped xG-rates model is within the 0.005 RPS stretch target, so the December deliverable stands on it if rung 3 does not beat it. Phase 4 is calendar-bound (gameweek 19).
+
 Evidence: today is 16 September 2026; the target is a published forecast before gameweek
 19 in late December. Done: ingest for three of five sources, entities, curate, Poisson,
 Dixon-Coles, simulation engine, match-level evaluation, calibration, standalone prior.

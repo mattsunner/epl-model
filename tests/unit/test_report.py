@@ -17,6 +17,7 @@ def _matches(n_rounds: int, *, odds_from_round: int = 0) -> pl.DataFrame:
         for home, away, hg, ag, res in (("a", "b", 2, 1, "H"), ("c", "d", 0, 0, "D")):
             rows.append(
                 {
+                    "match_id": f"m{r}-{home}-{away}",
                     "season": "2020/21",
                     "date": d,
                     "home_club_id": home,
@@ -87,6 +88,8 @@ def test_report_reconciles_exactly_and_serialises(tmp_path):
         "draw",
         "away",
     }
+    assert report["cadence"] == "date"
+    assert report["backtest_seconds"] >= 0
 
     written = write_report(report, tmp_path)
     assert [p.name for p in written] == ["metrics.json", "calibration.csv"]
@@ -99,3 +102,12 @@ def test_report_reconciles_exactly_and_serialises(tmp_path):
 def test_format_table_has_one_line_per_row_plus_header():
     rows = [{"model": "x", "n": 3, "rps": 0.2, "log_loss": 1.0, "brier": 0.6}]
     assert len(format_table(rows).splitlines()) == 2
+
+
+def test_build_report_accepts_gameweek_cadence():
+    matches = _matches(6)
+    report = build_report(
+        matches, {"stub": _StubModel}, min_train_matches=2, season_level=False, cadence="gameweek"
+    )
+    assert report["cadence"] == "gameweek"
+    assert report["primary"][0]["n"] > 0

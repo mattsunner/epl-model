@@ -121,6 +121,12 @@ def _tuning_section(tuning: Mapping[str, Any]) -> str:
 
 def render_markdown(report: Mapping[str, Any]) -> str:
     window = report["window"]
+    cadence = report.get("cadence", "date")
+    cadence_label = {
+        "date": "date (next distinct match date)",
+        "gameweek": "gameweek (next full round, mirroring the publishing cadence)",
+    }.get(cadence, cadence)
+    backtest_seconds = report.get("backtest_seconds", 0.0)
     coverage = report["coverage"]
     primary = {r["model"]: r for r in report["primary"]}
     models = [r["model"] for r in report["primary"]]
@@ -214,9 +220,10 @@ model or the training data changes, then `just render-evaluation`.
 - **Window**: {window["first_season"]} through {window["last_season"]}
   ({window["n_seasons"]} seasons, {window["matches"]:,} matches; design.md section 8.2).
   The in-progress season is excluded because its results are not final.
-- **Split**: walk-forward by date (`evaluate/backtest.py`), never random k-fold. Fit on
-  everything strictly before a cutoff date, predict every match on the next distinct
-  match date, advance. Every model sees identical splits.
+- **Split**: walk-forward, cadence **{cadence_label}** (`evaluate/backtest.py`, story
+  C-09), never random k-fold. Fit on everything strictly before a cutoff, predict the
+  next round, advance. Every model sees identical splits. This run took
+  {backtest_seconds:.1f}s across every model's refits.
 - **Benchmark**: closing odds de-vigged with Shin (headline) and multiplicative
   (reported alongside), from the fallback chain in ADR 0007. Source split for the
   window: {source_text}.

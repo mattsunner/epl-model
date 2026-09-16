@@ -79,6 +79,13 @@ def evaluate(
     season_level: Annotated[
         bool, typer.Option(help="Also run the season-level evaluation (adds ~1 min).")
     ] = True,
+    cadence: Annotated[
+        str,
+        typer.Option(
+            help="Backtest refit cadence: 'date' (finest fair protocol) or "
+            "'gameweek' (once per round, matching the publishing cadence, story C-09)."
+        ),
+    ] = "date",
 ) -> None:
     """Walk-forward backtest Poisson and Dixon-Coles against the market baseline over
     stg_matches (design.md section 8), scoring everything on identical rows. Prints the
@@ -86,6 +93,9 @@ def evaluate(
     import structlog
 
     from plforecast.evaluate.report import build_report, format_table, write_report
+
+    if cadence not in ("date", "gameweek"):
+        raise typer.BadParameter(f"cadence must be 'date' or 'gameweek', got {cadence!r}")
 
     log = structlog.get_logger()
     matches = _completed_season_matches()
@@ -101,6 +111,7 @@ def evaluate(
         min_train_matches=min_train_matches,
         season_level=season_level,
         tuning=tuning,
+        cadence=cadence,  # type: ignore[arg-type]
     )
     written = write_report(report, out_dir)
 

@@ -824,6 +824,8 @@ clubs with one recent season bypass it per `needs_prior`.
 
 ### C-09 · P2 · Recommendation · Backtest cadence should mirror the publishing cadence
 
+**Status**: Done 16 Sep 2026: `walk_forward_splits`/`run_backtest`/`build_report` take `cadence: {'date', 'gameweek'}`; gameweek cadence clusters `n_clubs // 2` matches per round in date order (historical seasons have no gameweek column; FPL's own numbering only covers the current season, which the backtest window excludes) and refits once per round rather than once per distinct match date, matching the product's actual weekly publish. `plforecast evaluate --cadence gameweek`; the cadence and total backtest runtime are recorded in `docs/evaluation.md`. Verified against the live database: coverage and RPS are nearly identical to date cadence on this data (0.1981 vs 0.1980 for xg-rates), as expected since both cover every match exactly once.
+
 Evidence: the backtest refits at every distinct match date (1,252 splits). The product
 publishes once per gameweek. Per-date refits are a fair match-level protocol, but the
 season-level evaluation (C-07) and the live process both operate per gameweek.

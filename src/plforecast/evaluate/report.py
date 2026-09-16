@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import csv
 import json
+import time
 from collections.abc import Callable, Mapping
 from datetime import UTC, datetime
 from pathlib import Path
@@ -23,7 +24,7 @@ from typing import Any
 import numpy as np
 import polars as pl
 
-from plforecast.evaluate.backtest import BacktestResult, run_backtest
+from plforecast.evaluate.backtest import BacktestResult, Cadence, run_backtest
 from plforecast.evaluate.calibration import calibration_by_outcome
 from plforecast.evaluate.market import market_probabilities
 from plforecast.evaluate.metrics import brier_score, log_loss, outcome_index, rps
@@ -75,15 +76,24 @@ def build_report(
     season_level: bool = True,
     season_level_simulations: int = 5_000,
     tuning: Mapping[str, Any] | None = None,
+    cadence: Cadence = "date",
 ) -> dict[str, Any]:
     """`matches` shaped like stg_matches (benchmark_* columns included), already
     restricted to the evaluation window. Runs every model through the shared
     walk-forward splitter, de-vigs the benchmark both ways, and scores everything on
-    the intersection of rows all of them covered."""
+    the intersection of rows all of them covered.
+
+    `cadence` (story C-09) is the backtest's own refit cadence -- "date" (the finest
+    fair match-level protocol) or "gameweek" (refit once per round, mirroring how the
+    product actually publishes). Runtime is recorded either way, since "gameweek"
+    means far fewer refits and the difference is worth seeing in the rendered report.
+    """
+    started = time.perf_counter()
     runs: dict[str, BacktestResult] = {
-        name: run_backtest(matches, factory, min_train_matches=min_train_matches)
+        name: run_backtest(matches, factory, min_train_matches=min_train_matches, cadence=cadence)
         for name, factory in model_factories.items()
     }
+    backtest_seconds = time.perf_counter() - started
     market: dict[str, pl.DataFrame] = {
         method: market_probabilities(matches, method=method) for method in DEVIG_METHODS
     }
@@ -153,6 +163,8 @@ def build_report(
             "intersection": keys.height,
         },
         "min_train_matches": min_train_matches,
+        "cadence": cadence,
+        "backtest_seconds": round(backtest_seconds, 2),
         "primary": primary,
         "secondary_full_set": secondary,
         "by_season": by_season,

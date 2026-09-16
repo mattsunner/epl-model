@@ -65,6 +65,79 @@ def test_min_train_matches_skips_earliest_rounds():
     assert len(splits) < 5  # the very first round(s), with too little training data, are skipped
 
 
+def _matches_with_ids(rows: list[tuple]) -> pl.DataFrame:
+    return pl.DataFrame(
+        rows,
+        schema=[
+            "match_id",
+            "season",
+            "date",
+            "home_club_id",
+            "away_club_id",
+            "home_goals",
+            "away_goals",
+            "result",
+        ],
+        orient="row",
+    )
+
+
+def _round_robin_season_with_ids(season: str, start: date, clubs: list[str]) -> list[tuple]:
+    """A full round robin among `clubs`, one match per calendar day, in a fixed
+    generation order -- realistic gameweek clustering needs date order plus a
+    tiebreak, and a fixed match_id order is that tiebreak here."""
+    rows = []
+    pairs = [(h, a) for h in clubs for a in clubs if h != a]
+    for i, (home, away) in enumerate(pairs):
+        d = start + timedelta(days=i)
+        rows.append((f"{season}-{i}", season, d, home, away, 1, 0, "H"))
+    return rows
+
+
+def test_gameweek_cadence_groups_n_clubs_over_two_matches_per_round():
+    # 4 clubs -> 2 matches per round; the round-robin above lands one match per day,
+    # so consecutive pairs of days must be clustered into the same round.
+    matches = _matches_with_ids(
+        _round_robin_season_with_ids("2020/21", date(2020, 8, 1), ["a", "b", "c", "d"])
+    )
+
+    splits = list(walk_forward_splits(matches, min_train_matches=0, cadence="gameweek"))
+
+    assert all(split.test.height == 2 for split in splits)
+    for split in splits:
+        assert split.as_of_date == split.test["date"].min()
+
+
+def test_gameweek_cadence_never_trains_on_the_rounds_own_matches():
+    matches = _matches_with_ids(
+        _round_robin_season_with_ids("2020/21", date(2020, 8, 1), ["a", "b", "c", "d"])
+    )
+
+    for split in walk_forward_splits(matches, min_train_matches=0, cadence="gameweek"):
+        same_season_train = split.train.filter(pl.col("season") == split.season)
+        assert (same_season_train["date"] < split.as_of_date).all()
+        # The round itself may span more than one date; every one of its matches must
+        # still be excluded from training, not just the ones dated as_of_date.
+        assert split.train.join(split.test, on="match_id", how="inner").height == 0
+
+
+def test_gameweek_cadence_scales_matches_per_round_with_club_count_not_a_hardcoded_ten():
+    six_clubs = _matches_with_ids(
+        _round_robin_season_with_ids("2020/21", date(2020, 8, 1), ["a", "b", "c", "d", "e", "f"])
+    )
+    splits = list(walk_forward_splits(six_clubs, min_train_matches=0, cadence="gameweek"))
+    assert all(split.test.height == 3 for split in splits)  # 6 clubs -> 3 matches/round
+
+
+def test_gameweek_cadence_covers_every_match_exactly_once_across_all_splits():
+    matches = _matches_with_ids(
+        _round_robin_season_with_ids("2020/21", date(2020, 8, 1), ["a", "b", "c", "d"])
+    )
+    splits = list(walk_forward_splits(matches, min_train_matches=0, cadence="gameweek"))
+    tested_ids = pl.concat([s.test for s in splits])["match_id"].to_list()
+    assert sorted(tested_ids) == sorted(matches["match_id"].to_list())
+
+
 class _StubModel:
     """Predicts a fixed [P(home), P(draw), P(away)] regardless of matchup or training
     data -- enough to exercise run_backtest's plumbing without needing a real fit."""
@@ -139,6 +212,17 @@ def test_run_backtest_skips_matches_with_a_club_unseen_in_training():
 class _BrokenModel(_StubModel):
     def scoreline_matrix(self, home: str, away: str, max_goals: int = 10) -> np.ndarray:
         raise ValueError("a genuine bug, not an unknown club")
+
+
+def test_run_backtest_gameweek_cadence_covers_every_match_exactly_once():
+    matches = _matches_with_ids(
+        _round_robin_season_with_ids("2020/21", date(2020, 8, 1), ["a", "b", "c", "d"])
+    )
+
+    result = run_backtest(matches, _StubModel, min_train_matches=0, cadence="gameweek")
+
+    assert result.n_scored + result.warmup_excluded + result.unrateable.height == matches.height
+    assert result.n_scored == matches.height  # min_train_matches=0: nothing warms up
 
 
 def test_run_backtest_does_not_swallow_other_value_errors():

@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import json
+from pathlib import Path
+from typing import Annotated
+
 import typer
 
 from plforecast.logging import configure_logging
@@ -51,18 +55,23 @@ def curate() -> None:
 
 
 @app.command()
-def evaluate() -> None:
+def evaluate(
+    out_dir: Annotated[
+        Path, typer.Option(help="Where metrics.json and calibration.csv are written.")
+    ] = Path("docs/evaluation"),
+    xi: Annotated[
+        float, typer.Option(help="Dixon-Coles decay rate (story C-03 tunes this).")
+    ] = 0.0018,
+    min_train_matches: Annotated[
+        int, typer.Option(help="Warm-up before the first test split.")
+    ] = 100,
+) -> None:
     """Walk-forward backtest Poisson and Dixon-Coles against the market baseline over
-    stg_matches (design.md section 8). Prints a summary table; see docs/evaluation.md
-    for the last full write-up."""
-    from collections.abc import Callable
-
+    stg_matches (design.md section 8), scoring everything on identical rows. Prints the
+    primary table and writes the full report; docs/evaluation.md is rendered from it."""
     import structlog
 
-    from plforecast.evaluate.backtest import run_backtest
-    from plforecast.evaluate.market import market_probabilities
-    from plforecast.evaluate.metrics import brier_score, log_loss, outcome_index, rps
-    from plforecast.models.base import MatchModel
+    from plforecast.evaluate.report import build_report, format_table, write_report
     from plforecast.models.dixon_coles import DixonColesModel
     from plforecast.models.poisson import PoissonModel
 
@@ -79,43 +88,44 @@ def evaluate() -> None:
 
     log.info("evaluate.window", seasons=matches["season"].n_unique(), matches=matches.height)
 
-    model_factories: list[tuple[str, Callable[[], MatchModel]]] = [
-        ("poisson", PoissonModel),
-        ("dixon-coles", lambda: DixonColesModel(xi=0.0018)),
-    ]
-    rows = []
-    for name, factory in model_factories:
-        result = run_backtest(matches, factory)
-        rows.append(
-            {
-                "model": name,
-                "n": result.height,
-                "mean_rps": result["rps"].mean(),
-                "mean_log_loss": result["log_loss"].mean(),
-                "mean_brier": result["brier"].mean(),
-            }
-        )
+    report = build_report(
+        matches,
+        {"poisson": PoissonModel, "dixon-coles": lambda: DixonColesModel(xi=xi)},
+        min_train_matches=min_train_matches,
+    )
+    written = write_report(report, out_dir)
 
-    for method in ("shin", "multiplicative"):
-        market = market_probabilities(matches, method=method)
-        outcomes = outcome_index(market["result"].to_list())
-        probs = market.select("p_home", "p_draw", "p_away").to_numpy()
-        rows.append(
-            {
-                "model": f"market ({method})",
-                "n": market.height,
-                "mean_rps": rps(probs, outcomes).mean(),
-                "mean_log_loss": log_loss(probs, outcomes).mean(),
-                "mean_brier": brier_score(probs, outcomes).mean(),
-            }
-        )
+    typer.echo("Primary (identical rows for every model and the benchmark):")
+    typer.echo(format_table(report["primary"]))
+    typer.echo("")
+    typer.echo("Secondary (each on every row it covered):")
+    typer.echo(format_table(report["secondary_full_set"]))
+    typer.echo("")
+    typer.echo(f"coverage: {json.dumps(report['coverage'], default=str)}")
+    written.append(_render_evaluation(out_dir))
+    typer.echo(f"written: {', '.join(str(path) for path in written)}")
 
-    for row in rows:
-        typer.echo(
-            f"{row['model']:20s} n={row['n']:5d}  "
-            f"rps={row['mean_rps']:.4f}  log_loss={row['mean_log_loss']:.4f}  "
-            f"brier={row['mean_brier']:.4f}"
-        )
+
+def _render_evaluation(report_dir: Path, target: Path = Path("docs/evaluation.md")) -> Path:
+    from plforecast.evaluate.render import render_markdown
+
+    report = json.loads((report_dir / "metrics.json").read_text())
+    target.write_text(render_markdown(report))
+    return target
+
+
+@app.command()
+def render_evaluation(
+    report_dir: Annotated[Path, typer.Option(help="Directory holding metrics.json.")] = Path(
+        "docs/evaluation"
+    ),
+    target: Annotated[Path, typer.Option(help="Markdown file to write.")] = Path(
+        "docs/evaluation.md"
+    ),
+) -> None:
+    """Re-render docs/evaluation.md from an existing metrics.json without re-running the
+    backtest."""
+    typer.echo(f"written: {_render_evaluation(report_dir, target)}")
 
 
 if __name__ == "__main__":

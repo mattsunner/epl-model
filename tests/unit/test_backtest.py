@@ -2,8 +2,10 @@ from datetime import date, timedelta
 
 import numpy as np
 import polars as pl
+import pytest
 
 from plforecast.evaluate.backtest import run_backtest, walk_forward_splits
+from plforecast.models.base import UnknownClubError
 
 
 def _matches(rows: list[tuple]) -> pl.DataFrame:
@@ -85,12 +87,17 @@ class _StubModel:
 def test_run_backtest_produces_one_row_per_test_match_with_scores():
     matches = _matches(_season_rows("2020/21", date(2020, 8, 1), 5))
 
-    results = run_backtest(matches, _StubModel, min_train_matches=2)
+    result = run_backtest(matches, _StubModel, min_train_matches=2)
+    results = result.scores
 
     assert results.height > 0
     assert {"p_home", "p_draw", "p_away", "rps", "log_loss", "brier"} <= set(results.columns)
     assert (results["p_home"] == 0.5).all()
     assert (results["rps"] >= 0).all()
+    # Exact accounting: every input match is scored, warm-up excluded, or unrateable.
+    assert result.n_scored + result.warmup_excluded + result.unrateable.height == matches.height
+    assert result.warmup_excluded == 2  # round 1 (2 matches) precedes the 2-match warm-up
+    assert result.unrateable.height == 0
 
 
 class _RejectsUnknownClubModel:
@@ -104,7 +111,7 @@ class _RejectsUnknownClubModel:
 
     def scoreline_matrix(self, home: str, away: str, max_goals: int = 10) -> np.ndarray:
         if home not in self._known or away not in self._known:
-            raise ValueError("Both teams must have been in the training data.")
+            raise UnknownClubError("Both teams must have been in the training data.")
         matrix = np.zeros((max_goals + 1, max_goals + 1))
         matrix[0, 0] = 1.0
         return matrix
@@ -119,8 +126,22 @@ def test_run_backtest_skips_matches_with_a_club_unseen_in_training():
     # of its own fixtures involves a club absent from training data at prediction time.
     matches = _matches(_season_rows("2020/21", date(2020, 8, 1), 5))
 
-    results = run_backtest(matches, _RejectsUnknownClubModel, min_train_matches=0)
+    result = run_backtest(matches, _RejectsUnknownClubModel, min_train_matches=0)
 
-    # Round 1 (2 matches) is unrateable and must be skipped, not raise; rounds 2-5
+    # Round 1 (2 matches) is unrateable and must be recorded, not raise; rounds 2-5
     # (2 matches each) are trainable from round 1 onward.
-    assert results.height == 8
+    assert result.n_scored == 8
+    assert result.unrateable.height == 2
+    assert set(result.unrateable.columns) == {"season", "date", "home_club_id", "away_club_id"}
+    assert result.warmup_excluded == 0
+
+
+class _BrokenModel(_StubModel):
+    def scoreline_matrix(self, home: str, away: str, max_goals: int = 10) -> np.ndarray:
+        raise ValueError("a genuine bug, not an unknown club")
+
+
+def test_run_backtest_does_not_swallow_other_value_errors():
+    matches = _matches(_season_rows("2020/21", date(2020, 8, 1), 3))
+    with pytest.raises(ValueError, match="genuine bug"):
+        run_backtest(matches, _BrokenModel, min_train_matches=1)

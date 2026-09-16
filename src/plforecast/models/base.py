@@ -15,6 +15,12 @@ import polars as pl
 ClubId = str
 
 
+class UnknownClubError(ValueError):
+    """Raised by `scoreline_matrix` when either club was absent from the frame passed to
+    `fit()`. Its own type so callers (the backtest) can skip exactly this case without
+    swallowing every other ValueError a model might raise."""
+
+
 class MatchModel(Protocol):
     def fit(self, matches: pl.DataFrame) -> Self: ...
 

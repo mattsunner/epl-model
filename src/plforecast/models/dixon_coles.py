@@ -30,7 +30,7 @@ import numpy as np
 import penaltyblog as pb
 import polars as pl
 
-from plforecast.models.base import ClubId
+from plforecast.models.base import ClubId, UnknownClubError
 
 
 class DixonColesModel:
@@ -42,6 +42,7 @@ class DixonColesModel:
     def __init__(self, xi: float) -> None:
         self.xi = xi
         self._model: pb.models.DixonColesGoalModel | None = None
+        self._clubs: set[ClubId] = set()
 
     def fit(self, matches: pl.DataFrame) -> Self:
         weights = pb.models.dixon_coles_weights(matches["date"].to_list(), xi=self.xi)
@@ -53,11 +54,15 @@ class DixonColesModel:
             weights=weights,
         )
         self._model.fit()
+        self._clubs = set(matches["home_club_id"]) | set(matches["away_club_id"])
         return self
 
     def scoreline_matrix(self, home: ClubId, away: ClubId, max_goals: int = 10) -> np.ndarray:
         if self._model is None:
             raise ValueError("call fit() before scoreline_matrix()")
+        unknown = [club for club in (home, away) if club not in self._clubs]
+        if unknown:
+            raise UnknownClubError(f"club(s) not in training data: {unknown!r}")
         # Same off-by-one translation as PoissonModel: penaltyblog's max_goals is an
         # exclusive upper bound, design.md's protocol wants an inclusive one.
         grid = self._model.predict(home, away, max_goals=max_goals + 1).grid

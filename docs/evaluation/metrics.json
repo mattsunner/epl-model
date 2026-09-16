@@ -1,0 +1,1301 @@
+{
+  "generated_at": "2026-09-16T16:06:42+00:00",
+  "window": {
+    "first_season": "2015/16",
+    "last_season": "2025/26",
+    "n_seasons": 11,
+    "matches": 4180
+  },
+  "coverage": {
+    "warmup_excluded": {
+      "poisson": 100,
+      "dixon-coles": 100
+    },
+    "unrateable": {
+      "poisson": 14,
+      "dixon-coles": 14
+    },
+    "unrateable_matches": {
+      "poisson": [
+        {
+          "season": "2016/17",
+          "date": "2016-08-13",
+          "home_club_id": "burnley",
+          "away_club_id": "swansea"
+        },
+        {
+          "season": "2016/17",
+          "date": "2016-08-13",
+          "home_club_id": "hull",
+          "away_club_id": "leicester"
+        },
+        {
+          "season": "2016/17",
+          "date": "2016-08-13",
+          "home_club_id": "middlesbrough",
+          "away_club_id": "stoke"
+        },
+        {
+          "season": "2017/18",
+          "date": "2017-08-12",
+          "home_club_id": "brighton",
+          "away_club_id": "man-city"
+        },
+        {
+          "season": "2017/18",
+          "date": "2017-08-12",
+          "home_club_id": "crystal-palace",
+          "away_club_id": "huddersfield"
+        },
+        {
+          "season": "2018/19",
+          "date": "2018-08-11",
+          "home_club_id": "bournemouth",
+          "away_club_id": "cardiff"
+        },
+        {
+          "season": "2018/19",
+          "date": "2018-08-11",
+          "home_club_id": "fulham",
+          "away_club_id": "crystal-palace"
+        },
+        {
+          "season": "2018/19",
+          "date": "2018-08-11",
+          "home_club_id": "wolves",
+          "away_club_id": "everton"
+        },
+        {
+          "season": "2019/20",
+          "date": "2019-08-10",
+          "home_club_id": "bournemouth",
+          "away_club_id": "sheffield-united"
+        },
+        {
+          "season": "2020/21",
+          "date": "2020-09-12",
+          "home_club_id": "liverpool",
+          "away_club_id": "leeds"
+        },
+        {
+          "season": "2021/22",
+          "date": "2021-08-13",
+          "home_club_id": "brentford",
+          "away_club_id": "arsenal"
+        },
+        {
+          "season": "2022/23",
+          "date": "2022-08-06",
+          "home_club_id": "newcastle",
+          "away_club_id": "nottm-forest"
+        },
+        {
+          "season": "2023/24",
+          "date": "2023-08-12",
+          "home_club_id": "brighton",
+          "away_club_id": "luton"
+        },
+        {
+          "season": "2024/25",
+          "date": "2024-08-17",
+          "home_club_id": "ipswich",
+          "away_club_id": "liverpool"
+        }
+      ],
+      "dixon-coles": [
+        {
+          "season": "2016/17",
+          "date": "2016-08-13",
+          "home_club_id": "burnley",
+          "away_club_id": "swansea"
+        },
+        {
+          "season": "2016/17",
+          "date": "2016-08-13",
+          "home_club_id": "hull",
+          "away_club_id": "leicester"
+        },
+        {
+          "season": "2016/17",
+          "date": "2016-08-13",
+          "home_club_id": "middlesbrough",
+          "away_club_id": "stoke"
+        },
+        {
+          "season": "2017/18",
+          "date": "2017-08-12",
+          "home_club_id": "brighton",
+          "away_club_id": "man-city"
+        },
+        {
+          "season": "2017/18",
+          "date": "2017-08-12",
+          "home_club_id": "crystal-palace",
+          "away_club_id": "huddersfield"
+        },
+        {
+          "season": "2018/19",
+          "date": "2018-08-11",
+          "home_club_id": "bournemouth",
+          "away_club_id": "cardiff"
+        },
+        {
+          "season": "2018/19",
+          "date": "2018-08-11",
+          "home_club_id": "fulham",
+          "away_club_id": "crystal-palace"
+        },
+        {
+          "season": "2018/19",
+          "date": "2018-08-11",
+          "home_club_id": "wolves",
+          "away_club_id": "everton"
+        },
+        {
+          "season": "2019/20",
+          "date": "2019-08-10",
+          "home_club_id": "bournemouth",
+          "away_club_id": "sheffield-united"
+        },
+        {
+          "season": "2020/21",
+          "date": "2020-09-12",
+          "home_club_id": "liverpool",
+          "away_club_id": "leeds"
+        },
+        {
+          "season": "2021/22",
+          "date": "2021-08-13",
+          "home_club_id": "brentford",
+          "away_club_id": "arsenal"
+        },
+        {
+          "season": "2022/23",
+          "date": "2022-08-06",
+          "home_club_id": "newcastle",
+          "away_club_id": "nottm-forest"
+        },
+        {
+          "season": "2023/24",
+          "date": "2023-08-12",
+          "home_club_id": "brighton",
+          "away_club_id": "luton"
+        },
+        {
+          "season": "2024/25",
+          "date": "2024-08-17",
+          "home_club_id": "ipswich",
+          "away_club_id": "liverpool"
+        }
+      ]
+    },
+    "benchmark_by_source": {
+      "betfair_exchange": 148,
+      "market_avg": 22,
+      "pinnacle": 4010
+    },
+    "benchmark_missing": 0,
+    "intersection": 4066
+  },
+  "min_train_matches": 100,
+  "primary": [
+    {
+      "model": "poisson",
+      "n": 4066,
+      "rps": 0.20629071791931064,
+      "log_loss": 0.9935437064853685,
+      "brier": 0.5907483069871123
+    },
+    {
+      "model": "dixon-coles",
+      "n": 4066,
+      "rps": 0.20100292589902954,
+      "log_loss": 0.97886107705942,
+      "brier": 0.5804057901251446
+    },
+    {
+      "model": "market (shin)",
+      "n": 4066,
+      "rps": 0.19388306988820606,
+      "log_loss": 0.9542326812289003,
+      "brier": 0.5652442913702135
+    },
+    {
+      "model": "market (multiplicative)",
+      "n": 4066,
+      "rps": 0.19391415947047083,
+      "log_loss": 0.9543565425297053,
+      "brier": 0.5653254923359423
+    }
+  ],
+  "secondary_full_set": [
+    {
+      "model": "poisson",
+      "n": 4066,
+      "rps": 0.20629071791931064,
+      "log_loss": 0.9935437064853685,
+      "brier": 0.5907483069871123
+    },
+    {
+      "model": "dixon-coles",
+      "n": 4066,
+      "rps": 0.20100292589902954,
+      "log_loss": 0.97886107705942,
+      "brier": 0.5804057901251446
+    },
+    {
+      "model": "market (shin)",
+      "n": 4180,
+      "rps": 0.19431821662843615,
+      "log_loss": 0.9562552359702107,
+      "brier": 0.5665058897859762
+    },
+    {
+      "model": "market (multiplicative)",
+      "n": 4180,
+      "rps": 0.1943444352067867,
+      "log_loss": 0.9563505766057654,
+      "brier": 0.5665781738835355
+    }
+  ],
+  "by_season": [
+    {
+      "model": "poisson",
+      "season": "2015/16",
+      "n": 280,
+      "rps": 0.21281170913591113,
+      "log_loss": 1.0554822957913228,
+      "brier": 0.6333546692516104
+    },
+    {
+      "model": "poisson",
+      "season": "2016/17",
+      "n": 377,
+      "rps": 0.19900923642003054,
+      "log_loss": 0.9654496861339378,
+      "brier": 0.568549160140722
+    },
+    {
+      "model": "poisson",
+      "season": "2017/18",
+      "n": 378,
+      "rps": 0.19391966242777434,
+      "log_loss": 0.9790207841390643,
+      "brier": 0.5788362645636311
+    },
+    {
+      "model": "poisson",
+      "season": "2018/19",
+      "n": 377,
+      "rps": 0.1886319009838868,
+      "log_loss": 0.898508565422872,
+      "brier": 0.525844139887819
+    },
+    {
+      "model": "poisson",
+      "season": "2019/20",
+      "n": 379,
+      "rps": 0.19975950336630235,
+      "log_loss": 0.9710450293518322,
+      "brier": 0.5771548093426941
+    },
+    {
+      "model": "poisson",
+      "season": "2020/21",
+      "n": 379,
+      "rps": 0.2218298913465174,
+      "log_loss": 1.0297460770793396,
+      "brier": 0.6149018720833308
+    },
+    {
+      "model": "poisson",
+      "season": "2021/22",
+      "n": 379,
+      "rps": 0.19534474434687424,
+      "log_loss": 0.9545922932854886,
+      "brier": 0.5645174914537849
+    },
+    {
+      "model": "poisson",
+      "season": "2022/23",
+      "n": 379,
+      "rps": 0.21967085807194955,
+      "log_loss": 1.0352089001015008,
+      "brier": 0.615288500067523
+    },
+    {
+      "model": "poisson",
+      "season": "2023/24",
+      "n": 379,
+      "rps": 0.19399411244572828,
+      "log_loss": 0.9401893457988793,
+      "brier": 0.5538574460708566
+    },
+    {
+      "model": "poisson",
+      "season": "2024/25",
+      "n": 379,
+      "rps": 0.22644095116574542,
+      "log_loss": 1.055826137852547,
+      "brier": 0.637506991797866
+    },
+    {
+      "model": "poisson",
+      "season": "2025/26",
+      "n": 380,
+      "rps": 0.21929014810853914,
+      "log_loss": 1.0592294751881046,
+      "brier": 0.6389311886948689
+    },
+    {
+      "model": "dixon-coles",
+      "season": "2015/16",
+      "n": 280,
+      "rps": 0.21215007211799458,
+      "log_loss": 1.0549105032969461,
+      "brier": 0.6320489219587624
+    },
+    {
+      "model": "dixon-coles",
+      "season": "2016/17",
+      "n": 377,
+      "rps": 0.1972674031394293,
+      "log_loss": 0.9610843678695606,
+      "brier": 0.5656321243262681
+    },
+    {
+      "model": "dixon-coles",
+      "season": "2017/18",
+      "n": 378,
+      "rps": 0.19146892723644232,
+      "log_loss": 0.969544265454651,
+      "brier": 0.5735175621194323
+    },
+    {
+      "model": "dixon-coles",
+      "season": "2018/19",
+      "n": 377,
+      "rps": 0.18685042221655873,
+      "log_loss": 0.8962096287200726,
+      "brier": 0.523895116524653
+    },
+    {
+      "model": "dixon-coles",
+      "season": "2019/20",
+      "n": 379,
+      "rps": 0.19911663824969442,
+      "log_loss": 0.970483980903649,
+      "brier": 0.5754965477278965
+    },
+    {
+      "model": "dixon-coles",
+      "season": "2020/21",
+      "n": 379,
+      "rps": 0.2173078442728703,
+      "log_loss": 1.0201333809463116,
+      "brier": 0.6073744056240608
+    },
+    {
+      "model": "dixon-coles",
+      "season": "2021/22",
+      "n": 379,
+      "rps": 0.19467581371914783,
+      "log_loss": 0.9538039076865232,
+      "brier": 0.5643174325068588
+    },
+    {
+      "model": "dixon-coles",
+      "season": "2022/23",
+      "n": 379,
+      "rps": 0.21143493960957502,
+      "log_loss": 1.0119575140944308,
+      "brier": 0.5990462756858265
+    },
+    {
+      "model": "dixon-coles",
+      "season": "2023/24",
+      "n": 379,
+      "rps": 0.18892561867328508,
+      "log_loss": 0.925059452823562,
+      "brier": 0.5448469436462036
+    },
+    {
+      "model": "dixon-coles",
+      "season": "2024/25",
+      "n": 379,
+      "rps": 0.20462091019416634,
+      "log_loss": 0.990585265703896,
+      "brier": 0.5927740437738551
+    },
+    {
+      "model": "dixon-coles",
+      "season": "2025/26",
+      "n": 380,
+      "rps": 0.20998213955113404,
+      "log_loss": 1.0328676895428526,
+      "brier": 0.6185093296337363
+    },
+    {
+      "model": "market (shin)",
+      "season": "2015/16",
+      "n": 280,
+      "rps": 0.20819992243925545,
+      "log_loss": 1.0299176893950135,
+      "brier": 0.6185703176745189
+    },
+    {
+      "model": "market (shin)",
+      "season": "2016/17",
+      "n": 377,
+      "rps": 0.17981855944147437,
+      "log_loss": 0.90257119283368,
+      "brier": 0.529786231582863
+    },
+    {
+      "model": "market (shin)",
+      "season": "2017/18",
+      "n": 378,
+      "rps": 0.18442080357187662,
+      "log_loss": 0.9402969508449692,
+      "brier": 0.5569549432288364
+    },
+    {
+      "model": "market (shin)",
+      "season": "2018/19",
+      "n": 377,
+      "rps": 0.18476050131593386,
+      "log_loss": 0.8889859665192812,
+      "brier": 0.5197640125984105
+    },
+    {
+      "model": "market (shin)",
+      "season": "2019/20",
+      "n": 379,
+      "rps": 0.1986043928481522,
+      "log_loss": 0.9721906379692576,
+      "brier": 0.5739196928540025
+    },
+    {
+      "model": "market (shin)",
+      "season": "2020/21",
+      "n": 379,
+      "rps": 0.21171914650710147,
+      "log_loss": 0.9998256581710876,
+      "brier": 0.5937858598775386
+    },
+    {
+      "model": "market (shin)",
+      "season": "2021/22",
+      "n": 379,
+      "rps": 0.188414511395277,
+      "log_loss": 0.9350383879510796,
+      "brier": 0.5532891450064683
+    },
+    {
+      "model": "market (shin)",
+      "season": "2022/23",
+      "n": 379,
+      "rps": 0.1977562176665421,
+      "log_loss": 0.9633001175061277,
+      "brier": 0.5720058278510676
+    },
+    {
+      "model": "market (shin)",
+      "season": "2023/24",
+      "n": 379,
+      "rps": 0.1805685132252793,
+      "log_loss": 0.9001007287369576,
+      "brier": 0.5263808289365319
+    },
+    {
+      "model": "market (shin)",
+      "season": "2024/25",
+      "n": 379,
+      "rps": 0.19655827347237123,
+      "log_loss": 0.9682848171840607,
+      "brier": 0.5765176958029544
+    },
+    {
+      "model": "market (shin)",
+      "season": "2025/26",
+      "n": 380,
+      "rps": 0.2054548272059522,
+      "log_loss": 1.0150032648450036,
+      "brier": 0.6100748660290969
+    },
+    {
+      "model": "market (multiplicative)",
+      "season": "2015/16",
+      "n": 280,
+      "rps": 0.2080351213330081,
+      "log_loss": 1.0293161600822305,
+      "brier": 0.6181678350872212
+    },
+    {
+      "model": "market (multiplicative)",
+      "season": "2016/17",
+      "n": 377,
+      "rps": 0.1800347354085305,
+      "log_loss": 0.90339918985169,
+      "brier": 0.5302591385227526
+    },
+    {
+      "model": "market (multiplicative)",
+      "season": "2017/18",
+      "n": 378,
+      "rps": 0.18438942243287712,
+      "log_loss": 0.9402078651453186,
+      "brier": 0.5568419925269782
+    },
+    {
+      "model": "market (multiplicative)",
+      "season": "2018/19",
+      "n": 377,
+      "rps": 0.1849342332154,
+      "log_loss": 0.8899715616536882,
+      "brier": 0.5202868246265713
+    },
+    {
+      "model": "market (multiplicative)",
+      "season": "2019/20",
+      "n": 379,
+      "rps": 0.19848695936868738,
+      "log_loss": 0.97122546818406,
+      "brier": 0.5737273508625023
+    },
+    {
+      "model": "market (multiplicative)",
+      "season": "2020/21",
+      "n": 379,
+      "rps": 0.21153658910099696,
+      "log_loss": 0.9989619243278645,
+      "brier": 0.5934728265135011
+    },
+    {
+      "model": "market (multiplicative)",
+      "season": "2021/22",
+      "n": 379,
+      "rps": 0.18851220951951225,
+      "log_loss": 0.9355240480238431,
+      "brier": 0.5535220548125317
+    },
+    {
+      "model": "market (multiplicative)",
+      "season": "2022/23",
+      "n": 379,
+      "rps": 0.19780552302933907,
+      "log_loss": 0.9634337519057479,
+      "brier": 0.5721129985782818
+    },
+    {
+      "model": "market (multiplicative)",
+      "season": "2023/24",
+      "n": 379,
+      "rps": 0.18084808751900222,
+      "log_loss": 0.9012075534527705,
+      "brier": 0.5270061242786483
+    },
+    {
+      "model": "market (multiplicative)",
+      "season": "2024/25",
+      "n": 379,
+      "rps": 0.19648184554665532,
+      "log_loss": 0.9681032986841466,
+      "brier": 0.5762891223411587
+    },
+    {
+      "model": "market (multiplicative)",
+      "season": "2025/26",
+      "n": 380,
+      "rps": 0.2055032774866673,
+      "log_loss": 1.0153447101712436,
+      "brier": 0.6101339626355154
+    }
+  ],
+  "calibration": {
+    "poisson": [
+      {
+        "outcome": "pooled",
+        "bucket_low": 0.0,
+        "bucket_high": 0.1,
+        "mean_predicted": 0.07141612268978706,
+        "empirical_frequency": 0.08564231738035265,
+        "n": 397,
+        "ci_low": 0.061932454646522986,
+        "ci_high": 0.11729416285970286
+      },
+      {
+        "outcome": "pooled",
+        "bucket_low": 0.1,
+        "bucket_high": 0.2,
+        "mean_predicted": 0.15881569076797297,
+        "empirical_frequency": 0.16878306878306878,
+        "n": 1890,
+        "ci_low": 0.15257220156494028,
+        "ci_high": 0.18633761363171963
+      },
+      {
+        "outcome": "pooled",
+        "bucket_low": 0.2,
+        "bucket_high": 0.30000000000000004,
+        "mean_predicted": 0.24873267086006873,
+        "empirical_frequency": 0.2610198789974071,
+        "n": 4628,
+        "ci_low": 0.24856845185058332,
+        "ci_high": 0.2738677067127554
+      },
+      {
+        "outcome": "pooled",
+        "bucket_low": 0.30000000000000004,
+        "bucket_high": 0.4,
+        "mean_predicted": 0.34639953076488883,
+        "empirical_frequency": 0.3373772385904102,
+        "n": 1731,
+        "ci_low": 0.3154854836053766,
+        "ci_high": 0.35998918462009083
+      },
+      {
+        "outcome": "pooled",
+        "bucket_low": 0.4,
+        "bucket_high": 0.5,
+        "mean_predicted": 0.4477895989020323,
+        "empirical_frequency": 0.43522561863173215,
+        "n": 1374,
+        "ci_low": 0.4092271831662246,
+        "ci_high": 0.4615852395109448
+      },
+      {
+        "outcome": "pooled",
+        "bucket_low": 0.5,
+        "bucket_high": 0.6000000000000001,
+        "mean_predicted": 0.5466776945248623,
+        "empirical_frequency": 0.5075834175935288,
+        "n": 989,
+        "ci_low": 0.4764563682669785,
+        "ci_high": 0.5386517840636234
+      },
+      {
+        "outcome": "pooled",
+        "bucket_low": 0.6000000000000001,
+        "bucket_high": 0.7000000000000001,
+        "mean_predicted": 0.6465302901889253,
+        "empirical_frequency": 0.6281481481481481,
+        "n": 675,
+        "ci_low": 0.5910594252090481,
+        "ci_high": 0.6637865299872378
+      },
+      {
+        "outcome": "pooled",
+        "bucket_low": 0.7000000000000001,
+        "bucket_high": 0.8,
+        "mean_predicted": 0.7439411552476037,
+        "empirical_frequency": 0.7506361323155216,
+        "n": 393,
+        "ci_low": 0.7055740606837041,
+        "ci_high": 0.7908458461108906
+      },
+      {
+        "outcome": "pooled",
+        "bucket_low": 0.8,
+        "bucket_high": 0.9,
+        "mean_predicted": 0.831742647593161,
+        "empirical_frequency": 0.8240740740740741,
+        "n": 108,
+        "ci_low": 0.7415045937948218,
+        "ci_high": 0.8843813767398171
+      },
+      {
+        "outcome": "pooled",
+        "bucket_low": 0.9,
+        "bucket_high": 1.0,
+        "mean_predicted": 0.9385831261453413,
+        "empirical_frequency": 1.0,
+        "n": 13,
+        "ci_low": 0.7719046276458016,
+        "ci_high": 0.9999999999999999
+      },
+      {
+        "outcome": "home",
+        "bucket_low": 0.0,
+        "bucket_high": 0.1,
+        "mean_predicted": 0.07050575519689943,
+        "empirical_frequency": 0.1568627450980392,
+        "n": 51,
+        "ci_low": 0.08169223220048706,
+        "ci_high": 0.2801044677298776
+      },
+      {
+        "outcome": "home",
+        "bucket_low": 0.1,
+        "bucket_high": 0.2,
+        "mean_predicted": 0.15707422242322014,
+        "empirical_frequency": 0.18452380952380953,
+        "n": 336,
+        "ci_low": 0.14669377389509858,
+        "ci_high": 0.22948592844117627
+      },
+      {
+        "outcome": "home",
+        "bucket_low": 0.2,
+        "bucket_high": 0.30000000000000004,
+        "mean_predicted": 0.2503554563257622,
+        "empirical_frequency": 0.2890625,
+        "n": 640,
+        "ci_low": 0.2552821451404774,
+        "ci_high": 0.32535995812738094
+      },
+      {
+        "outcome": "home",
+        "bucket_low": 0.30000000000000004,
+        "bucket_high": 0.4,
+        "mean_predicted": 0.35331293899623467,
+        "empirical_frequency": 0.36426592797783935,
+        "n": 722,
+        "ci_low": 0.3299683621959782,
+        "ci_high": 0.4000002175563418
+      },
+      {
+        "outcome": "home",
+        "bucket_low": 0.4,
+        "bucket_high": 0.5,
+        "mean_predicted": 0.4477120513526854,
+        "empirical_frequency": 0.4407185628742515,
+        "n": 835,
+        "ci_low": 0.40739167181549274,
+        "ci_high": 0.4745884104050718
+      },
+      {
+        "outcome": "home",
+        "bucket_low": 0.5,
+        "bucket_high": 0.6000000000000001,
+        "mean_predicted": 0.5478068279367212,
+        "empirical_frequency": 0.49913344887348354,
+        "n": 577,
+        "ci_low": 0.4584771885504444,
+        "ci_high": 0.5398011712587361
+      },
+      {
+        "outcome": "home",
+        "bucket_low": 0.6000000000000001,
+        "bucket_high": 0.7000000000000001,
+        "mean_predicted": 0.6463998542514887,
+        "empirical_frequency": 0.6276595744680851,
+        "n": 470,
+        "ci_low": 0.5830848279091995,
+        "ci_high": 0.6701644346155663
+      },
+      {
+        "outcome": "home",
+        "bucket_low": 0.7000000000000001,
+        "bucket_high": 0.8,
+        "mean_predicted": 0.7453872204601911,
+        "empirical_frequency": 0.7584097859327217,
+        "n": 327,
+        "ci_low": 0.7091875588332921,
+        "ci_high": 0.8016311293758926
+      },
+      {
+        "outcome": "home",
+        "bucket_low": 0.8,
+        "bucket_high": 0.9,
+        "mean_predicted": 0.8322314563085057,
+        "empirical_frequency": 0.8631578947368421,
+        "n": 95,
+        "ci_low": 0.7798355682887077,
+        "ci_high": 0.9182520644036751
+      },
+      {
+        "outcome": "home",
+        "bucket_low": 0.9,
+        "bucket_high": 1.0,
+        "mean_predicted": 0.9385831261453413,
+        "empirical_frequency": 1.0,
+        "n": 13,
+        "ci_low": 0.7719046276458016,
+        "ci_high": 0.9999999999999999
+      },
+      {
+        "outcome": "draw",
+        "bucket_low": 0.0,
+        "bucket_high": 0.1,
+        "mean_predicted": 0.07079182803763168,
+        "empirical_frequency": 0.0625,
+        "n": 32,
+        "ci_low": 0.017310567031640967,
+        "ci_high": 0.2014712314415458
+      },
+      {
+        "outcome": "draw",
+        "bucket_low": 0.1,
+        "bucket_high": 0.2,
+        "mean_predicted": 0.16660069070163466,
+        "empirical_frequency": 0.1517509727626459,
+        "n": 771,
+        "ci_low": 0.1281564893732272,
+        "ci_high": 0.17879850911470596
+      },
+      {
+        "outcome": "draw",
+        "bucket_low": 0.2,
+        "bucket_high": 0.30000000000000004,
+        "mean_predicted": 0.24716755378675234,
+        "empirical_frequency": 0.2564102564102564,
+        "n": 3081,
+        "ci_low": 0.24130190376506758,
+        "ci_high": 0.2721252787865381
+      },
+      {
+        "outcome": "draw",
+        "bucket_low": 0.30000000000000004,
+        "bucket_high": 0.4,
+        "mean_predicted": 0.31956773754348183,
+        "empirical_frequency": 0.2752808988764045,
+        "n": 178,
+        "ci_low": 0.21493541510283926,
+        "ci_high": 0.34512090803255474
+      },
+      {
+        "outcome": "draw",
+        "bucket_low": 0.4,
+        "bucket_high": 0.5,
+        "mean_predicted": 0.453600047152472,
+        "empirical_frequency": 0.25,
+        "n": 4,
+        "ci_low": 0.04558726080970055,
+        "ci_high": 0.6993581574175981
+      },
+      {
+        "outcome": "away",
+        "bucket_low": 0.0,
+        "bucket_high": 0.1,
+        "mean_predicted": 0.07162760731082603,
+        "empirical_frequency": 0.07643312101910828,
+        "n": 314,
+        "ci_low": 0.05189809675265749,
+        "ci_high": 0.11120667571171686
+      },
+      {
+        "outcome": "away",
+        "bucket_low": 0.1,
+        "bucket_high": 0.2,
+        "mean_predicted": 0.15189729793908885,
+        "empirical_frequency": 0.17879948914431673,
+        "n": 783,
+        "ci_low": 0.15354781123237543,
+        "ci_high": 0.20718744952283613
+      },
+      {
+        "outcome": "away",
+        "bucket_low": 0.2,
+        "bucket_high": 0.30000000000000004,
+        "mean_predicted": 0.2529041625963909,
+        "empirical_frequency": 0.25689084895259096,
+        "n": 907,
+        "ci_low": 0.2295231978730612,
+        "ci_high": 0.2863091176970032
+      },
+      {
+        "outcome": "away",
+        "bucket_low": 0.30000000000000004,
+        "bucket_high": 0.4,
+        "mean_predicted": 0.3461402990565601,
+        "empirical_frequency": 0.32731648616125153,
+        "n": 831,
+        "ci_low": 0.29627124908743746,
+        "ci_high": 0.3599509030737415
+      },
+      {
+        "outcome": "away",
+        "bucket_low": 0.4,
+        "bucket_high": 0.5,
+        "mean_predicted": 0.4478671884547481,
+        "empirical_frequency": 0.4280373831775701,
+        "n": 535,
+        "ci_low": 0.38676978043681837,
+        "ci_high": 0.4703310444170787
+      },
+      {
+        "outcome": "away",
+        "bucket_low": 0.5,
+        "bucket_high": 0.6000000000000001,
+        "mean_predicted": 0.5450963596252444,
+        "empirical_frequency": 0.5194174757281553,
+        "n": 412,
+        "ci_low": 0.47121728965940013,
+        "ci_high": 0.5672589124138016
+      },
+      {
+        "outcome": "away",
+        "bucket_low": 0.6000000000000001,
+        "bucket_high": 0.7000000000000001,
+        "mean_predicted": 0.6468293384357306,
+        "empirical_frequency": 0.6292682926829268,
+        "n": 205,
+        "ci_low": 0.5613404019460725,
+        "ci_high": 0.6924406255342249
+      },
+      {
+        "outcome": "away",
+        "bucket_low": 0.7000000000000001,
+        "bucket_high": 0.8,
+        "mean_predicted": 0.7367765594216016,
+        "empirical_frequency": 0.7121212121212122,
+        "n": 66,
+        "ci_low": 0.5936275059135345,
+        "ci_high": 0.8072805002019328
+      },
+      {
+        "outcome": "away",
+        "bucket_low": 0.8,
+        "bucket_high": 0.9,
+        "mean_predicted": 0.8281705839041023,
+        "empirical_frequency": 0.5384615384615384,
+        "n": 13,
+        "ci_low": 0.29143795714506004,
+        "ci_high": 0.7679393219046169
+      }
+    ],
+    "dixon-coles": [
+      {
+        "outcome": "pooled",
+        "bucket_low": 0.0,
+        "bucket_high": 0.1,
+        "mean_predicted": 0.0684279682317877,
+        "empirical_frequency": 0.09177820267686425,
+        "n": 523,
+        "ci_low": 0.06992247733008293,
+        "ci_high": 0.11958701769747963
+      },
+      {
+        "outcome": "pooled",
+        "bucket_low": 0.1,
+        "bucket_high": 0.2,
+        "mean_predicted": 0.15861937143221244,
+        "empirical_frequency": 0.15380434782608696,
+        "n": 1840,
+        "ci_low": 0.13804314471751708,
+        "ci_high": 0.1710080787999105
+      },
+      {
+        "outcome": "pooled",
+        "bucket_low": 0.2,
+        "bucket_high": 0.30000000000000004,
+        "mean_predicted": 0.2508526547436754,
+        "empirical_frequency": 0.2593174674449933,
+        "n": 4454,
+        "ci_low": 0.24665796442158794,
+        "ci_high": 0.2723917775207406
+      },
+      {
+        "outcome": "pooled",
+        "bucket_low": 0.30000000000000004,
+        "bucket_high": 0.4,
+        "mean_predicted": 0.3449823857174923,
+        "empirical_frequency": 0.3399685699319015,
+        "n": 1909,
+        "ci_low": 0.3190594605128346,
+        "ci_high": 0.361520444746698
+      },
+      {
+        "outcome": "pooled",
+        "bucket_low": 0.4,
+        "bucket_high": 0.5,
+        "mean_predicted": 0.4493323490681107,
+        "empirical_frequency": 0.42945258288357746,
+        "n": 1297,
+        "ci_low": 0.4027609052294586,
+        "ci_high": 0.4565609216087615
+      },
+      {
+        "outcome": "pooled",
+        "bucket_low": 0.5,
+        "bucket_high": 0.6000000000000001,
+        "mean_predicted": 0.5446648156408566,
+        "empirical_frequency": 0.5296566077003122,
+        "n": 961,
+        "ci_low": 0.4980445271330288,
+        "ci_high": 0.5610325362320446
+      },
+      {
+        "outcome": "pooled",
+        "bucket_low": 0.6000000000000001,
+        "bucket_high": 0.7000000000000001,
+        "mean_predicted": 0.6464203064475966,
+        "empirical_frequency": 0.6526946107784432,
+        "n": 668,
+        "ci_low": 0.615809044118012,
+        "ci_high": 0.6878340212535239
+      },
+      {
+        "outcome": "pooled",
+        "bucket_low": 0.7000000000000001,
+        "bucket_high": 0.8,
+        "mean_predicted": 0.7467710668548981,
+        "empirical_frequency": 0.7643979057591623,
+        "n": 382,
+        "ci_low": 0.7193396974977099,
+        "ci_high": 0.8041913937888597
+      },
+      {
+        "outcome": "pooled",
+        "bucket_low": 0.8,
+        "bucket_high": 0.9,
+        "mean_predicted": 0.8373276901449427,
+        "empirical_frequency": 0.8263888888888888,
+        "n": 144,
+        "ci_low": 0.7562655721912297,
+        "ci_high": 0.8795506646737323
+      },
+      {
+        "outcome": "pooled",
+        "bucket_low": 0.9,
+        "bucket_high": 1.0,
+        "mean_predicted": 0.9312993208920515,
+        "empirical_frequency": 0.9,
+        "n": 20,
+        "ci_low": 0.6989663547715128,
+        "ci_high": 0.9721335187862319
+      },
+      {
+        "outcome": "home",
+        "bucket_low": 0.0,
+        "bucket_high": 0.1,
+        "mean_predicted": 0.07256872065952087,
+        "empirical_frequency": 0.13725490196078433,
+        "n": 102,
+        "ci_low": 0.08355366620734478,
+        "ci_high": 0.21728741417342262
+      },
+      {
+        "outcome": "home",
+        "bucket_low": 0.1,
+        "bucket_high": 0.2,
+        "mean_predicted": 0.15799384284339846,
+        "empirical_frequency": 0.18652849740932642,
+        "n": 386,
+        "ci_low": 0.15082657734971736,
+        "ci_high": 0.22840825125965633
+      },
+      {
+        "outcome": "home",
+        "bucket_low": 0.2,
+        "bucket_high": 0.30000000000000004,
+        "mean_predicted": 0.251308526956,
+        "empirical_frequency": 0.2739059967585089,
+        "n": 617,
+        "ci_low": 0.2401974463706401,
+        "ci_high": 0.3104124621074946
+      },
+      {
+        "outcome": "home",
+        "bucket_low": 0.30000000000000004,
+        "bucket_high": 0.4,
+        "mean_predicted": 0.35117786128447237,
+        "empirical_frequency": 0.3862433862433862,
+        "n": 756,
+        "ci_low": 0.35219466238798786,
+        "ci_high": 0.421442327271735
+      },
+      {
+        "outcome": "home",
+        "bucket_low": 0.4,
+        "bucket_high": 0.5,
+        "mean_predicted": 0.44978681616663885,
+        "empirical_frequency": 0.4204993429697766,
+        "n": 761,
+        "ci_low": 0.385912155945605,
+        "ci_high": 0.4558851229485472
+      },
+      {
+        "outcome": "home",
+        "bucket_low": 0.5,
+        "bucket_high": 0.6000000000000001,
+        "mean_predicted": 0.5457279101250229,
+        "empirical_frequency": 0.5364120781527532,
+        "n": 563,
+        "ci_low": 0.49511273443705256,
+        "ci_high": 0.5772178958688181
+      },
+      {
+        "outcome": "home",
+        "bucket_low": 0.6000000000000001,
+        "bucket_high": 0.7000000000000001,
+        "mean_predicted": 0.6482421604275784,
+        "empirical_frequency": 0.6608315098468271,
+        "n": 457,
+        "ci_low": 0.6162460243483912,
+        "ci_high": 0.7027356930868782
+      },
+      {
+        "outcome": "home",
+        "bucket_low": 0.7000000000000001,
+        "bucket_high": 0.8,
+        "mean_predicted": 0.7491046445219777,
+        "empirical_frequency": 0.7673611111111112,
+        "n": 288,
+        "ci_low": 0.7152395464286257,
+        "ci_high": 0.8124442193471505
+      },
+      {
+        "outcome": "home",
+        "bucket_low": 0.8,
+        "bucket_high": 0.9,
+        "mean_predicted": 0.8383578877985676,
+        "empirical_frequency": 0.8793103448275862,
+        "n": 116,
+        "ci_low": 0.8075734431935786,
+        "ci_high": 0.9267300346342817
+      },
+      {
+        "outcome": "home",
+        "bucket_low": 0.9,
+        "bucket_high": 1.0,
+        "mean_predicted": 0.9312993208920515,
+        "empirical_frequency": 0.9,
+        "n": 20,
+        "ci_low": 0.6989663547715128,
+        "ci_high": 0.9721335187862319
+      },
+      {
+        "outcome": "draw",
+        "bucket_low": 0.0,
+        "bucket_high": 0.1,
+        "mean_predicted": 0.07602874116084904,
+        "empirical_frequency": 0.07407407407407407,
+        "n": 54,
+        "ci_low": 0.02918152776550481,
+        "ci_high": 0.1755411583859995
+      },
+      {
+        "outcome": "draw",
+        "bucket_low": 0.1,
+        "bucket_high": 0.2,
+        "mean_predicted": 0.16563211647526263,
+        "empirical_frequency": 0.15558698727015557,
+        "n": 707,
+        "ci_low": 0.13073768465389163,
+        "ci_high": 0.18415877508841627
+      },
+      {
+        "outcome": "draw",
+        "bucket_low": 0.2,
+        "bucket_high": 0.30000000000000004,
+        "mean_predicted": 0.2505395523789995,
+        "empirical_frequency": 0.2538382804503582,
+        "n": 2931,
+        "ci_low": 0.23841189363839604,
+        "ci_high": 0.2699090769329275
+      },
+      {
+        "outcome": "draw",
+        "bucket_low": 0.30000000000000004,
+        "bucket_high": 0.4,
+        "mean_predicted": 0.32300023991435256,
+        "empirical_frequency": 0.26975476839237056,
+        "n": 367,
+        "ci_low": 0.22690453333723615,
+        "ci_high": 0.3173751150671421
+      },
+      {
+        "outcome": "draw",
+        "bucket_low": 0.4,
+        "bucket_high": 0.5,
+        "mean_predicted": 0.4378568497139219,
+        "empirical_frequency": 0.2857142857142857,
+        "n": 7,
+        "ci_low": 0.08221892400405678,
+        "ci_high": 0.6410655481673808
+      },
+      {
+        "outcome": "away",
+        "bucket_low": 0.0,
+        "bucket_high": 0.1,
+        "mean_predicted": 0.06615876254841414,
+        "empirical_frequency": 0.08174386920980926,
+        "n": 367,
+        "ci_low": 0.05785735958320533,
+        "ci_high": 0.1142956111868783
+      },
+      {
+        "outcome": "away",
+        "bucket_low": 0.1,
+        "bucket_high": 0.2,
+        "mean_predicted": 0.15230537315891346,
+        "empirical_frequency": 0.13520749665327977,
+        "n": 747,
+        "ci_low": 0.11254421766096004,
+        "ci_high": 0.16160348209978323
+      },
+      {
+        "outcome": "away",
+        "bucket_low": 0.2,
+        "bucket_high": 0.30000000000000004,
+        "mean_predicted": 0.25155511597530994,
+        "empirical_frequency": 0.2671081677704194,
+        "n": 906,
+        "ci_low": 0.23932525618399048,
+        "ci_high": 0.2968576733705912
+      },
+      {
+        "outcome": "away",
+        "bucket_low": 0.30000000000000004,
+        "bucket_high": 0.4,
+        "mean_predicted": 0.3492873068130587,
+        "empirical_frequency": 0.3282442748091603,
+        "n": 786,
+        "ci_low": 0.2963211502614398,
+        "ci_high": 0.3618380955153837
+      },
+      {
+        "outcome": "away",
+        "bucket_low": 0.4,
+        "bucket_high": 0.5,
+        "mean_predicted": 0.4488304190747257,
+        "empirical_frequency": 0.444234404536862,
+        "n": 529,
+        "ci_low": 0.4024453517462585,
+        "ci_high": 0.4868275285386555
+      },
+      {
+        "outcome": "away",
+        "bucket_low": 0.5,
+        "bucket_high": 0.6000000000000001,
+        "mean_predicted": 0.5431609910313447,
+        "empirical_frequency": 0.5201005025125628,
+        "n": 398,
+        "ci_low": 0.4710607901558269,
+        "ci_high": 0.568755907819927
+      },
+      {
+        "outcome": "away",
+        "bucket_low": 0.6000000000000001,
+        "bucket_high": 0.7000000000000001,
+        "mean_predicted": 0.6424743952208118,
+        "empirical_frequency": 0.6350710900473934,
+        "n": 211,
+        "ci_low": 0.5682375818036987,
+        "ci_high": 0.6970743384973639
+      },
+      {
+        "outcome": "away",
+        "bucket_low": 0.7000000000000001,
+        "bucket_high": 0.8,
+        "mean_predicted": 0.7396213820876759,
+        "empirical_frequency": 0.7553191489361702,
+        "n": 94,
+        "ci_low": 0.6595241890282197,
+        "ci_high": 0.8310653890356723
+      },
+      {
+        "outcome": "away",
+        "bucket_low": 0.8,
+        "bucket_high": 0.9,
+        "mean_predicted": 0.8330597284370675,
+        "empirical_frequency": 0.6071428571428571,
+        "n": 28,
+        "ci_low": 0.42409044296597176,
+        "ci_high": 0.764343134584204
+      }
+    ]
+  }
+}

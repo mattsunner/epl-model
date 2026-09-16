@@ -28,9 +28,28 @@ from plforecast.evaluate.metrics import (
     outcome_probabilities,
     rps,
 )
-from plforecast.models.base import MatchModel
+from plforecast.models.base import MatchModel, UnknownClubError
 
 log = structlog.get_logger()
+
+
+@dataclass(frozen=True, slots=True)
+class BacktestResult:
+    """`scores`: one row per scored test match with the model's 1X2 probabilities and
+    per-match RPS, log loss and Brier score. `warmup_excluded`: matches that were never
+    a test row because fewer than `min_train_matches` preceded them (the start of the
+    first season). `unrateable`: test matches the model could not price because a club
+    had no training history yet (promoted-club debuts), one row each. Both exclusions
+    are reported separately so evaluation coverage reconciles exactly:
+    total = scored + warmup_excluded + len(unrateable)."""
+
+    scores: pl.DataFrame
+    warmup_excluded: int
+    unrateable: pl.DataFrame
+
+    @property
+    def n_scored(self) -> int:
+        return self.scores.height
 
 
 @dataclass(frozen=True, slots=True)
@@ -74,38 +93,38 @@ def run_backtest(
     *,
     min_train_matches: int = 100,
     max_goals: int = 10,
-) -> pl.DataFrame:
+) -> BacktestResult:
     """Runs `model_factory()` (a fresh, unfit model each split -- walk-forward means
     refitting at every step, never reusing a fit across splits) through every split
     from `walk_forward_splits`, scoring each test match with every metric in
-    evaluate/metrics.py. One row per test match: season, date, both clubs, the realised
-    result, the model's 1X2 probabilities, and its RPS/log-loss/Brier score.
+    evaluate/metrics.py.
 
-    A test match involving a club with zero appearances anywhere in accumulated
-    training data is skipped, not fabricated -- this is not a rare edge case: it hits
-    every round-1 fixture of the very first season in the backtest window (2015/16),
-    since by definition no club has any prior-window history yet at that point, and
-    also any later promoted club with no top-flight history since 2015/16. The same
-    real gap features/priors.py exists to eventually fill for the model layer; the
-    evaluation harness's job here is only to report it, not solve it.
-    """
+    A test match involving a club with zero appearances in accumulated training data is
+    recorded in `unrateable`, not fabricated: every promoted club with no prior-window
+    history hits this on its debut. The same real gap features/priors.py exists to fill
+    for the model layer; the harness only reports it."""
     rows = []
-    skipped = 0
+    unrateable_rows = []
+    n_tested = 0
     for split in walk_forward_splits(matches, min_train_matches=min_train_matches):
         model = model_factory().fit(split.train)
+        n_tested += split.test.height
         for row in split.test.iter_rows(named=True):
+            key = {
+                "season": split.season,
+                "date": split.as_of_date,
+                "home_club_id": row["home_club_id"],
+                "away_club_id": row["away_club_id"],
+            }
             try:
                 matrix = model.scoreline_matrix(row["home_club_id"], row["away_club_id"], max_goals)
-            except ValueError:
-                skipped += 1
+            except UnknownClubError:
+                unrateable_rows.append(key)
                 continue
             probs = outcome_probabilities(matrix)
             rows.append(
                 {
-                    "season": split.season,
-                    "date": split.as_of_date,
-                    "home_club_id": row["home_club_id"],
-                    "away_club_id": row["away_club_id"],
+                    **key,
                     "result": row["result"],
                     "p_home": probs[0],
                     "p_draw": probs[1],
@@ -113,17 +132,35 @@ def run_backtest(
                 }
             )
 
-    if skipped:
-        log.warning("backtest.skipped_unrateable_matches", count=skipped)
+    key_schema = {
+        "season": pl.Utf8,
+        "date": pl.Date,
+        "home_club_id": pl.Utf8,
+        "away_club_id": pl.Utf8,
+    }
+    unrateable = pl.DataFrame(unrateable_rows, schema=key_schema)
+    warmup_excluded = matches.height - n_tested
+    if unrateable.height:
+        log.warning("backtest.unrateable_matches", count=unrateable.height)
 
-    results = pl.DataFrame(rows)
+    results = pl.DataFrame(
+        rows,
+        schema={
+            **key_schema,
+            "result": pl.Utf8,
+            "p_home": pl.Float64,
+            "p_draw": pl.Float64,
+            "p_away": pl.Float64,
+        },
+    )
     if results.height == 0:
-        return results
+        return BacktestResult(results, warmup_excluded, unrateable)
 
     probs = results.select("p_home", "p_draw", "p_away").to_numpy()
     outcomes = outcome_index(results["result"].to_list())
-    return results.with_columns(
+    scored = results.with_columns(
         pl.Series("rps", rps(probs, outcomes)),
         pl.Series("log_loss", log_loss(probs, outcomes)),
         pl.Series("brier", brier_score(probs, outcomes)),
     )
+    return BacktestResult(scored, warmup_excluded, unrateable)

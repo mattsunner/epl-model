@@ -36,15 +36,19 @@ migrations explicitly.
 
 ## How it performs against the market
 
-Measured. Full results and protocol in `docs/evaluation.md`; headline numbers (mean
-RPS, walk-forward, 2015/16-2025/26, 4,066 test matches):
+Measured. Full results and protocol in `docs/evaluation.md` (rendered from
+`docs/evaluation/metrics.json` by `just evaluate`); headline numbers: mean RPS,
+walk-forward, 2015/16-2025/26, 4,066 matches scored on identical rows for every
+model and the benchmark:
 
 | Model | Mean RPS |
 | --- | --- |
 | `PoissonModel` (floor) | 0.2063 |
 | `DixonColesModel` | 0.2010 |
-| Market (Pinnacle closing, Shin de-vig) | 0.1935 |
+| Market, Shin de-vig | 0.1939 |
 
 Dixon-Coles beats the Poisson floor, as the model ladder requires. Neither beats the
-market yet -- anticipated, not a surprise (Pinnacle is a sharp, liquid market, and
-neither model has a promoted-club prior wired in yet or posterior uncertainty).
+market yet -- anticipated, not a surprise (the benchmark is mostly Pinnacle closing, a
+sharp, liquid market, and neither model has a promoted-club prior wired in yet or
+posterior uncertainty). The market benchmark is a fallback chain (ADR 0007) because
+the data source stopped publishing Pinnacle closing prices in January 2026.

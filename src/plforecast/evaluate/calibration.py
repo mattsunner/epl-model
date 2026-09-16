@@ -2,13 +2,11 @@
 in probability buckets, with binomial confidence bands. "Publishing this is what
 separates a credible forecast from a confident one" (section 10.1).
 
-Every (match, candidate outcome) pair -- home win, draw, away win -- is flattened into
-one binary calibration point: the model's predicted probability for that specific
-outcome, and whether it actually happened. Pooling all three outcome classes into one
-curve (rather than three separate per-class curves) is a deliberate simplification: it
-is the standard one-vs-rest reliability-diagram construction, and keeps a single chart
-answering "when this model says X%, does X% of the time happen" across the whole
-1X2 market rather than three harder-to-read panels.
+`calibration_curve` pools every (match, candidate outcome) pair -- home win, draw, away
+win -- into one binary calibration point each: the standard one-vs-rest reliability
+diagram, answering "when this model says X%, does X% of the time happen" across the
+whole 1X2 market. Pooling hides per-class error (Poisson-family models are known to
+misprice draws), so `calibration_by_outcome` also returns one curve per class.
 """
 
 from __future__ import annotations
@@ -16,6 +14,28 @@ from __future__ import annotations
 import numpy as np
 import polars as pl
 from scipy import stats
+
+OUTCOME_NAMES = ("home", "draw", "away")
+
+
+def calibration_by_outcome(
+    probs: np.ndarray, outcomes: np.ndarray, *, n_buckets: int = 10, confidence: float = 0.95
+) -> pl.DataFrame:
+    """`calibration_curve` run once pooled and once per outcome class, stacked with an
+    `outcome` column ("pooled", "home", "draw", "away")."""
+    frames = [
+        calibration_curve(probs, outcomes, n_buckets=n_buckets, confidence=confidence).with_columns(
+            pl.lit("pooled").alias("outcome")
+        )
+    ]
+    for k, name in enumerate(OUTCOME_NAMES):
+        binary_probs = np.stack([probs[:, k], 1 - probs[:, k]], axis=1)
+        binary_outcomes = np.where(outcomes == k, 0, 1)
+        curve = _binary_calibration_curve(
+            binary_probs[:, 0], binary_outcomes == 0, n_buckets=n_buckets, confidence=confidence
+        )
+        frames.append(curve.with_columns(pl.lit(name).alias("outcome")))
+    return pl.concat(frames).select("outcome", pl.all().exclude("outcome"))
 
 
 def calibration_curve(
@@ -30,12 +50,17 @@ def calibration_curve(
     approximation)."""
     one_hot = np.zeros_like(probs)
     one_hot[np.arange(len(outcomes)), outcomes] = 1.0
+    return _binary_calibration_curve(
+        probs.ravel(), one_hot.ravel() == 1.0, n_buckets=n_buckets, confidence=confidence
+    )
 
-    flat_probs = probs.ravel()
-    flat_actual = one_hot.ravel()
 
+def _binary_calibration_curve(
+    flat_probs: np.ndarray, flat_actual: np.ndarray, *, n_buckets: int, confidence: float
+) -> pl.DataFrame:
     bucket_edges = np.linspace(0, 1, n_buckets + 1)
     bucket_idx = np.clip(np.digitize(flat_probs, bucket_edges[1:-1]), 0, n_buckets - 1)
+    actual = flat_actual.astype(float)
 
     z = stats.norm.ppf(0.5 + confidence / 2)
     rows = []
@@ -44,7 +69,7 @@ def calibration_curve(
         n = int(mask.sum())
         if n == 0:
             continue
-        p_hat = float(flat_actual[mask].mean())
+        p_hat = float(actual[mask].mean())
         # Wilson score interval.
         denom = 1 + z**2 / n
         center = (p_hat + z**2 / (2 * n)) / denom

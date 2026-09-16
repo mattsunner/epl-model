@@ -1,6 +1,6 @@
 import numpy as np
 
-from plforecast.evaluate.calibration import calibration_curve
+from plforecast.evaluate.calibration import calibration_by_outcome, calibration_curve
 
 
 def test_calibration_curve_perfect_calibration():
@@ -49,3 +49,18 @@ def test_calibration_curve_confidence_interval_widens_with_fewer_samples():
     small_width = (small["ci_high"] - small["ci_low"]).to_list()[0]
     large_width = (large["ci_high"] - large["ci_low"]).to_list()[0]
     assert small_width > large_width
+
+
+def test_calibration_by_outcome_has_pooled_and_one_curve_per_class():
+    rng = np.random.default_rng(3)
+    n = 600
+    probs = np.tile([0.5, 0.3, 0.2], (n, 1))
+    outcomes = rng.choice([0, 1, 2], size=n, p=[0.5, 0.3, 0.2])
+
+    curves = calibration_by_outcome(probs, outcomes, n_buckets=10)
+
+    assert set(curves["outcome"].to_list()) == {"pooled", "home", "draw", "away"}
+    draw = curves.filter(curves["outcome"] == "draw")
+    assert draw.height == 1  # every draw probability is 0.3 -> one bucket
+    assert draw["n"].item() == n
+    assert abs(draw["empirical_frequency"].item() - 0.3) < 0.06

@@ -34,3 +34,6 @@ curate:
 
 evaluate:
     uv run plforecast evaluate
+
+render-evaluation:
+    uv run plforecast render-evaluation

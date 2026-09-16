@@ -25,7 +25,7 @@ import numpy as np
 import penaltyblog as pb
 import polars as pl
 
-from plforecast.models.base import ClubId
+from plforecast.models.base import ClubId, UnknownClubError
 
 
 class PoissonModel:
@@ -36,6 +36,7 @@ class PoissonModel:
 
     def __init__(self) -> None:
         self._model: pb.models.PoissonGoalsModel | None = None
+        self._clubs: set[ClubId] = set()
 
     def fit(self, matches: pl.DataFrame) -> Self:
         self._model = pb.models.PoissonGoalsModel(
@@ -45,11 +46,15 @@ class PoissonModel:
             teams_away=matches["away_club_id"].to_list(),
         )
         self._model.fit()
+        self._clubs = set(matches["home_club_id"]) | set(matches["away_club_id"])
         return self
 
     def scoreline_matrix(self, home: ClubId, away: ClubId, max_goals: int = 10) -> np.ndarray:
         if self._model is None:
             raise ValueError("call fit() before scoreline_matrix()")
+        unknown = [club for club in (home, away) if club not in self._clubs]
+        if unknown:
+            raise UnknownClubError(f"club(s) not in training data: {unknown!r}")
         # penaltyblog's own max_goals is an exclusive upper bound -- predict(max_goals=N)
         # returns an N x N grid for scores 0..N-1 -- while design.md's protocol wants an
         # inclusive (max_goals+1, max_goals+1) matrix for scores 0..max_goals.

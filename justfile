@@ -15,6 +15,9 @@ test:
 
 check: lint typecheck test
 
+notebook:
+    uv run jupyter lab notebooks/
+
 ingest-footballdata:
     uv run plforecast ingest football-data
 

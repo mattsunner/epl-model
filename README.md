@@ -38,6 +38,10 @@ so there is no separate migrate step; `just migrate` exists only to apply table
 migrations explicitly. `just curate` also writes `data/curate-manifest.json`: row counts
 and raw-snapshot lineage for every curated table.
 
+`just notebook` opens a local exploration surface for tweaking the forecasting model's
+levers and visualizing the result (`notebooks/03-prototypes/03-01-forecast-workbench.ipynb`) --
+separate from publishing a forecast, which `just forecast` still does.
+
 ## How it performs against the market
 
 Measured. Full results and protocol in `docs/evaluation.md` (rendered from

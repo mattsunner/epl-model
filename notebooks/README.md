@@ -12,4 +12,9 @@ Conventions (ADR 0003, design.md section 4):
   worth keeping are exported to `docs/`.
 - Run with the project virtualenv: `uv run jupyter lab`.
 
-There are no notebooks yet.
+**Exception**: `03-prototypes/03-01-forecast-workbench.ipynb` is a standing multi-section
+notebook rather than a single-conclusion one -- a local exploration surface (design.md
+section 10.2) for tweaking the forecasting model's levers and visualizing the result,
+meant to be revisited repeatedly rather than deleted once it reaches a conclusion. It
+still obeys the "consume, never define logic" rule: every chart it renders comes from
+`src/plforecast/viz.py`.

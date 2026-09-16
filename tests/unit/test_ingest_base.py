@@ -6,7 +6,13 @@ import httpx
 import polars as pl
 import pytest
 
-from plforecast.ingest.base import RawPart, cached_get, content_hash, write_snapshot
+from plforecast.ingest.base import (
+    RawPart,
+    cached_get,
+    content_hash,
+    prune_snapshots,
+    write_snapshot,
+)
 
 
 class _StubTransport(httpx.BaseTransport):
@@ -209,3 +215,60 @@ def test_write_snapshot_a_second_apart_lands_two_snapshots(tmp_path: Path):
     )
     assert first != second
     assert first.exists() and second.exists()
+
+
+def _snapshot_names(raw_dir: Path, source: str) -> set[str]:
+    return {p.name for p in (raw_dir / source).iterdir()}
+
+
+def _land(raw_dir: Path, source: str, stamp: str) -> None:
+    write_snapshot(
+        pl.DataFrame({"a": [1]}),
+        source=source,
+        fetched_at=datetime.strptime(stamp, "%Y%m%dT%H%M%SZ").replace(tzinfo=UTC),
+        raw_dir=raw_dir,
+        parts=_parts(),
+    )
+
+
+def test_prune_snapshots_keeps_only_the_n_most_recent_per_source(tmp_path: Path):
+    for stamp in ("20260101T000000Z", "20260102T000000Z", "20260103T000000Z"):
+        _land(tmp_path, "football-data", stamp)
+
+    removed = prune_snapshots(tmp_path, keep=2)
+
+    assert [p.name for p in removed["football-data"]] == ["20260101T000000Z"]
+    assert _snapshot_names(tmp_path, "football-data") == {"20260102T000000Z", "20260103T000000Z"}
+
+
+def test_prune_snapshots_always_keeps_at_least_the_latest_even_with_keep_zero(tmp_path: Path):
+    for stamp in ("20260101T000000Z", "20260102T000000Z"):
+        _land(tmp_path, "football-data", stamp)
+
+    prune_snapshots(tmp_path, keep=0)
+
+    assert _snapshot_names(tmp_path, "football-data") == {"20260102T000000Z"}
+
+
+def test_prune_snapshots_is_a_noop_when_within_the_keep_limit(tmp_path: Path):
+    _land(tmp_path, "football-data", "20260101T000000Z")
+
+    removed = prune_snapshots(tmp_path, keep=4)
+
+    assert removed == {}
+    assert _snapshot_names(tmp_path, "football-data") == {"20260101T000000Z"}
+
+
+def test_prune_snapshots_handles_multiple_sources_independently(tmp_path: Path):
+    for stamp in ("20260101T000000Z", "20260102T000000Z"):
+        _land(tmp_path, "football-data", stamp)
+    _land(tmp_path, "understat", "20260101T000000Z")
+
+    removed = prune_snapshots(tmp_path, keep=1)
+
+    assert set(removed) == {"football-data"}  # understat was already within the limit
+    assert _snapshot_names(tmp_path, "understat") == {"20260101T000000Z"}
+
+
+def test_prune_snapshots_on_a_missing_raw_dir_is_a_noop(tmp_path: Path):
+    assert prune_snapshots(tmp_path / "does-not-exist", keep=4) == {}

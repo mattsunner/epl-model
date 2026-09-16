@@ -71,6 +71,12 @@ ingestion contract every adapter implements.
   `a` (available), `d` (doubtful), `i` (injured), `s` (suspended), `u` (unavailable).
   The schema fails loudly (`isin` check) on any other code rather than passing it
   through, since an unrecognised code is real schema drift, not noise.
+- **Player availability: landed, unconsumed** (story B-16). `raw_fpl_player_availability`
+  is typed and validated at parse time but has no `stg_*` table built from it and no
+  feature reads it; nothing in the model layer accounts for missing players yet.
+  Landing it costs nothing extra (same bootstrap-static response as the team roster),
+  so it stays landed for when a future feature needs it, rather than being dropped and
+  re-added later.
 - **Timezone**: `kickoff_time` is UTC and must stay timezone-aware end to end --
   pandera's `coerce=True` silently strips timezone info back to a naive datetime
   unless the schema pins it explicitly via `dtype_kwargs={"time_zone": "UTC"}`. Caught
@@ -123,6 +129,13 @@ ingestion contract every adapter implements.
 - **Cross-source check**: home/away goals from Understat's own match records agree with
   football-data.co.uk's for the same fixtures, and every season lands exactly 380 rows
   (40 for the in-progress 2026/27), matching football-data's counts exactly.
+- **PPDA (passes per defensive action): landed, unconsumed** (story B-16). `home_ppda`/
+  `away_ppda` are kept on `raw_understat_team_match` because they cost nothing extra to
+  land alongside xG, but no feature reads them yet. The raw values are not
+  winsorised or capped at ingest -- a small-sample-size PPDA can be extreme (max
+  observed: 193, a division-by-a-handful-of-actions artefact) -- so any future feature
+  built on them must cap or winsorise first rather than feed the raw column straight
+  into a rate estimate.
 
 ## ClubElo, Transfermarkt
 

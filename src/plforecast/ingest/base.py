@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import shutil
 import time
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
@@ -124,6 +125,35 @@ def content_hash(df: pl.DataFrame) -> str:
     row_hashes = sorted(ordered.hash_rows().to_list())
     payload = ",".join(str(h) for h in row_hashes).encode()
     return hashlib.sha256(payload).hexdigest()
+
+
+def prune_snapshots(raw_dir: Path, *, keep: int) -> dict[str, list[Path]]:
+    """Delete all but the `keep` most recent snapshot directories under each source
+    directory in `raw_dir` (story B-17). Snapshot directories sort lexicographically by
+    their UTC timestamp name, so the last `keep` after a plain sort are the newest; the
+    single most recent snapshot is always kept even when `keep < 1`, since every raw_*
+    view must resolve to at least one snapshot (`storage.db.ensure_raw_views` drops a
+    view entirely once its source has none). Returns source name -> the paths removed,
+    so a caller can log or report what was pruned; removes nothing and returns an empty
+    mapping for a source directory that does not exist."""
+    keep = max(keep, 1)
+    removed: dict[str, list[Path]] = {}
+    if not raw_dir.exists():
+        return removed
+    for source_dir in sorted(p for p in raw_dir.iterdir() if p.is_dir()):
+        snapshots = sorted(p for p in source_dir.iterdir() if (p / "data.parquet").exists())
+        stale = snapshots[:-keep] if keep < len(snapshots) else []
+        if stale:
+            for snapshot in stale:
+                shutil.rmtree(snapshot)
+            removed[source_dir.name] = stale
+            log.info(
+                "ingest.pruned",
+                source=source_dir.name,
+                removed=[p.name for p in stale],
+                kept=[p.name for p in snapshots if p not in stale],
+            )
+    return removed
 
 
 def write_snapshot(

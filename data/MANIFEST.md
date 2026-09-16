@@ -15,3 +15,5 @@ everything is reproducible from source given the adapters in `src/plforecast/ing
 | `cache/understat-soccerdata/` | soccerdata's own scrape cache (no TTL, on/off only) | Populated automatically; safe to delete |
 | `pl.duckdb` | Curated DuckDB database: `raw_*` views (recreated on every connection), `dim_club`, `stg_club_season`, `stg_matches`, `stg_odds`, `stg_fixtures`, `stg_gameweeks`, `mart_team_match` | `just curate` (after the ingests above) |
 | `curate-manifest.json` | Row counts and raw-snapshot lineage for every curated table, one per `curate` run | `just curate` |
+
+**Retention**: every ingest run lands a full immutable snapshot and every `raw_*` view unions all of them, so snapshot count is the only thing bounding view-scan cost over time (story B-17). `just prune-raw` (default: keep the 4 most recent per source, the single latest always kept regardless) deletes older snapshot directories; curate's own natural-key dedupe already treats the latest snapshot as authoritative, so pruning changes nothing about curated output, only how much history `data/raw/` retains.

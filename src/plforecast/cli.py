@@ -521,6 +521,28 @@ def validate() -> None:
 
 
 @app.command()
+def prune_raw(
+    keep: Annotated[
+        int, typer.Option(help="Snapshots to keep per source; the latest is always kept.")
+    ] = 4,
+) -> None:
+    """Delete all but the `keep` most recent raw snapshots per source (story B-17).
+    Every ingest run lands a full snapshot and every raw_* view unions all of them, so
+    retained snapshot count is the only thing keeping view-scan cost from growing
+    without bound on a long-running install; curate's own natural-key dedupe makes old
+    snapshots redundant once a newer one exists."""
+    from plforecast.config import settings
+    from plforecast.ingest.base import prune_snapshots
+
+    removed = prune_snapshots(settings.raw_dir, keep=keep)
+    if not removed:
+        typer.echo(f"nothing to prune (every source has {keep} or fewer snapshots)")
+        return
+    for source, paths in removed.items():
+        typer.echo(f"{source}: removed {len(paths)} snapshot(s)")
+
+
+@app.command()
 def validate_artifacts(
     artifacts_dir: Annotated[Path, typer.Option(help="Directory of committed forecasts.")] = Path(
         "artifacts"

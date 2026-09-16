@@ -17,6 +17,18 @@ survival-zone reference reports its own mean points as a cross-check.
 
 Blending an external rating (ClubElo, squad value) is supported by `build_prior()`'s
 `external_rating`/`external_weight` but has no data source yet (story C-16).
+
+**Layer boundary note (story A-20).** design.md section 2.2 draws `features` upstream
+of `simulate`; this module imports `simulate.tiebreak` and `simulate.competition`
+anyway, to rank historical final tables when building the survival-zone reference
+(15th-18th needs the *real* final ordering, ties included, not an approximation). The
+standings arithmetic itself (points, goal difference, goals for) was factored out to
+`simulate.standings`, shared with `evaluate.season`, so this module no longer
+duplicates it; the tiebreak-rules dependency is the one piece that cannot be factored
+out the same way, since ranking IS what `TiebreakRules` is for. Accepted as a
+documented exception rather than inverting the dependency, since a features-layer
+"final table ranker" that isn't the actual competition's own tiebreak rules would be a
+second, divergent implementation of design.md section 7.2's logic.
 """
 
 from __future__ import annotations

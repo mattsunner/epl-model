@@ -49,3 +49,6 @@ validate-artifacts:
 
 validate:
     uv run plforecast validate
+
+prune-raw keep="4":
+    uv run plforecast prune-raw --keep {{keep}}

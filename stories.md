@@ -341,6 +341,8 @@ content; `notebooks/README.md` states the conventions; nbstripout hook installed
 
 ### A-20 · P2 · Confirmation · Layer boundaries are respected, with one dependency to note
 
+**Status**: Done 16 Sep 2026: documented in `features/priors.py`'s module docstring as an accepted exception (ranking a final table needs the competition's own tiebreak rules; a second implementation would diverge). The standings-arithmetic half was already factored into `simulate/standings.py` during Phase 2, shared with `evaluate/season.py`.
+
 The layering in design.md section 2.2 is honoured: ingest does no club resolution;
 entities is the only resolver; models implement a protocol and are swapped by factory;
 simulate consumes `MatchModel`; evaluate shares one splitter. Keep this.
@@ -636,6 +638,8 @@ cache state; data-sources.md documents the rate-limiting arrangement.
 
 ### B-16 · P3 · Recommendation · Columns landed without a consumer
 
+**Status**: Done 16 Sep 2026: `docs/data-sources.md` marks PPDA and FPL player availability landed-and-unconsumed, with the winsorising note for any future PPDA feature.
+
 Evidence: `home_ppda`/`away_ppda` (max observed 193, a division artefact) and the whole
 `fpl-players` table have no downstream reader. Landing is cheap and immutable, so keep
 them, but say so.
@@ -645,6 +649,8 @@ any feature until capped or winsorised; no `stg_player_availability` until a fea
 it.
 
 ### B-17 · P3 · Recommendation · Raw retention and view cost
+
+**Status**: Done 16 Sep 2026: `prune_snapshots()` in `ingest/base.py`, `plforecast prune-raw` / `just prune-raw` (default keep=4, the single latest always retained regardless), retention policy documented in `data/MANIFEST.md`.
 
 Evidence: every ingest lands a full snapshot and every `raw_*` view unions all of them.
 Sizes are tiny today (`data/raw` is 256 KB), but view scans grow linearly with weekly runs
@@ -665,6 +671,8 @@ Acceptance criteria: per-season count of values nulled by coercion is logged; th
 must be zero where the column exists; a test with a corrupted odds cell.
 
 ### B-19 · P2 · Confirmation · Data-layer decisions to preserve
+
+**Status**: Confirmed 16 Sep 2026: re-checked against the current code, all eight decisions still hold (immutable snapshots with `_meta.json`, strict pandera schemas with the `kickoff_time` tz pin, stable-core column selection widened by B-02 without weakening it, strict alias resolution, the club-season bridge table, natural-key dedupe, one season label/code pair, cross-source sanity checks). No change needed; this story exists to flag any future PR that reopens one of these.
 
 The following are correct and should be protected by the stories above rather than
 reopened:

@@ -1,34 +1,18 @@
-"""Promoted-club prior construction (design.md section 6.3, ADR 0006).
+"""Promoted-club prior construction (design.md section 6.3, ADR 0006). See
+`docs/methodology.md` section 4 for the full rationale (why the anchor is in rate
+space, why the prior needs real variance, how `PRIOR_GATE_XI` differs from a fitted
+model's own decay) and `docs/model-card.md` for the failure mode this module exists to
+prevent.
 
-A club with no usable top-flight history in the backfill window (Coventry for 2026/27)
-has nothing for the match model to fit. This module builds a prior over its attack and
-defence rates from the empirical record of "survival zone" clubs (15th to 18th in every
-completed season in the window), with the observed variance across those club-seasons
-rather than a point estimate, and delivers it to the model layer as pseudo-observations
-(`prior_pseudo_matches`, story C-08): synthetic matches against the real clubs in the
-fixture list, as many as the prior's width is worth in evidence.
+`needs_prior()` gates which clubs get a prior at all; `build_survival_zone_reference()`
+builds the empirical anchor; `build_prior()` turns it into one club's prior, optionally
+shrunk toward an external rating; `prior_pseudo_matches()` delivers it to a model's fit
+as synthetic matches against the real clubs already in the fixture list.
 
-A club with SOME recent top-flight history (Ipswich, 2024/25) is modelled from that
-history; `needs_prior()` is the gate.
-
-The anchor is in rate space, not points space. Design.md's cited figure (33.8 points
-for 18th place over 22 seasons) predates the ingested window and is in points; the
-survival-zone reference reports its own mean points as a cross-check.
-
-Blending an external rating (ClubElo, squad value) is supported by `build_prior()`'s
-`external_rating`/`external_weight` but has no data source yet (story C-16).
-
-**Layer boundary note (story A-20).** design.md section 2.2 draws `features` upstream
-of `simulate`; this module imports `simulate.tiebreak` and `simulate.competition`
-anyway, to rank historical final tables when building the survival-zone reference
-(15th-18th needs the *real* final ordering, ties included, not an approximation). The
-standings arithmetic itself (points, goal difference, goals for) was factored out to
-`simulate.standings`, shared with `evaluate.season`, so this module no longer
-duplicates it; the tiebreak-rules dependency is the one piece that cannot be factored
-out the same way, since ranking IS what `TiebreakRules` is for. Accepted as a
-documented exception rather than inverting the dependency, since a features-layer
-"final table ranker" that isn't the actual competition's own tiebreak rules would be a
-second, divergent implementation of design.md section 7.2's logic.
+Layer boundary note (story A-20): this module imports `simulate.tiebreak` to rank
+historical final tables, a documented exception to design.md 2.2's layering -- ranking
+a table correctly requires the competition's actual tiebreak rules, not a second,
+divergent implementation of them.
 """
 
 from __future__ import annotations
@@ -48,18 +32,11 @@ from plforecast.simulate.tiebreak import PremierLeagueTiebreaks, TiebreakRules
 
 _RATE_FIELDS = ("home_attack", "home_defence", "away_attack", "away_defence")
 
-# Decay rate for needs_prior's evidence gate -- deliberately much gentler than any
-# match model's own fitting xi (0.0018-0.005/day). A fitting xi is tuned to smooth
-# *rate estimation* and is aggressive enough that even a club with hundreds of matches
-# spread across the whole backfill window has an effective count near a single
-# season's worth once decayed -- using it as the sufficiency threshold's own decay rate
-# was tried and flagged essentially every established club as prior-needing the moment
-# a season is only a few gameweeks old, which is wrong (verified against real data: at
-# xi=0.005, Arsenal's 422 historical matches decay to an effective ~17, under the
-# default 19-match threshold). PRIOR_GATE_XI's ~6-year half-life instead separates a
-# stale one-off season (Hull's 2016/17: effective ~17 today) from a recent one
-# (Ipswich's 2024/25: effective ~36) while leaving every continuously-active club's
-# effective count in the hundreds.
+# needs_prior's evidence-gate decay rate: a ~6-year half-life, deliberately much
+# gentler than any fitted model's own decay. See docs/methodology.md section 4 and
+# docs/model-card.md ("Known failure mode") for why this is a dedicated constant
+# rather than a fitted model's xi -- reusing a fitting xi flagged every established
+# club, not just genuinely data-poor ones, in a real (since-fixed) bug.
 PRIOR_GATE_XI = 0.0003
 
 

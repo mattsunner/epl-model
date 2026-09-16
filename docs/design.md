@@ -89,6 +89,7 @@ As built on 16 September 2026. Entries marked *planned* do not exist yet; entrie
 pl-forecast/
 ├── README.md
 ├── LICENSE                        # MIT
+├── CONTRIBUTING.md                 # setup, where documentation lives (story C-12)
 ├── pyproject.toml
 ├── justfile
 ├── .pre-commit-config.yaml        # local hooks running the uv toolchain (ADR 0003)
@@ -100,8 +101,8 @@ pl-forecast/
 │   ├── data-sources.md            # source inventory, licensing, gotchas
 │   ├── evaluation.md              # rendered by `plforecast evaluate`; never hand-edited
 │   ├── evaluation/                # metrics.json, calibration.csv, tuning-*.json
-│   ├── methodology.md             # planned (story C-12)
-│   ├── model-card.md              # planned (story C-12)
+│   ├── methodology.md             # the maths; docstrings carry only contract + gotchas (story C-12)
+│   ├── model-card.md              # intended use, limitations, known failure modes
 │   └── adr/                       # 0001-0009, all written
 │
 ├── notebooks/                     # README.md only; conventions in ADR 0003
@@ -618,10 +619,16 @@ Tiebreak logic and the position matrix deserve the most test coverage. Both are 
 ### 11.4 Documentation
 
 - `README.md`: what it is, one-command quickstart, current forecast link, honest statement of how it performs against market odds.
-- `docs/methodology.md`: the maths, written to be readable by someone who has not read the code.
-- `docs/model-card.md`: intended use, limitations, known failure modes, the promoted-club weakness, what the model does not account for.
+- `docs/methodology.md`: the maths, written to be readable by someone who has not read the code. Built.
+- `docs/model-card.md`: intended use, limitations, known failure modes, the promoted-club weakness, what the model does not account for. Built.
 - `docs/adr/`: one file per significant decision, with context, options considered, decision, and consequences. These are the raw material for anything written later, and writing them at decision time costs minutes while reconstructing them costs hours.
-- Docstrings on every public function. `mypy` strict means the signatures already carry most of the contract.
+- Docstrings on every public function, but scoped narrowly (story C-12): contract plus
+  any gotcha specific to that function, roughly 10 lines. Project history, the reasoning
+  behind a modelling choice, and anything that would still be true if the function were
+  rewritten belong in this file, the ADRs, `docs/methodology.md`, or `docs/model-card.md`
+  instead, where they will not silently go stale next to code that has since changed.
+  `mypy` strict means the signatures already carry most of the contract, so a docstring
+  rarely needs to restate parameter types in prose.
 
 ### 11.5 Licensing and data ethics
 

@@ -867,6 +867,8 @@ within two weeks.
 
 ### C-12 · P2 · Recommendation · Move the "why" out of docstrings into docs
 
+**Status**: Done 16 Sep 2026: `docs/methodology.md` (the maths for every model rung, the promoted-club prior, simulation, evaluation protocol and cadence, tuning) and `docs/model-card.md` (intended use, current performance, limitations, the two real promoted-club failures found during this project's own build and the general lesson from them, what the model doesn't account for, reproducibility) written from existing docstring material. `CONTRIBUTING.md` states the split (docstring vs docs vs ADR vs stories.md). The two module docstrings the review specifically flagged as narrating project history at length (`ingest/understat.py`, `features/priors.py`) trimmed to short pointers into the new docs; other docstrings in the codebase were judged already within or close to the ~10-line contract-plus-gotcha guidance and left alone rather than trimmed for its own sake.
+
 Evidence: several module docstrings run 20 to 40 lines and narrate project history ("the
 season simulation validated in a prior session failed outright..."). That prose is valuable
 but belongs in ADRs, `docs/methodology.md`, and the model card, where it will not rot with

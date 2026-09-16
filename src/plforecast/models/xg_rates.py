@@ -27,7 +27,7 @@ import numpy as np
 import polars as pl
 from scipy.stats import poisson
 
-from plforecast.models.base import ClubId, UnknownClubError
+from plforecast.models.base import ClubId, UnknownClubError, assert_no_odds_columns
 
 CONSTRAINT_WEIGHT = 1e3
 
@@ -54,6 +54,7 @@ class XGRateModel:
         self._defence: np.ndarray = np.zeros(0)
 
     def fit(self, matches: pl.DataFrame) -> Self:
+        assert_no_odds_columns(matches)
         frame = matches
         if self.blend > 0:
             frame = frame.drop_nulls(["home_xg", "away_xg"])

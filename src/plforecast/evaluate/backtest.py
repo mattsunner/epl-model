@@ -28,7 +28,7 @@ from plforecast.evaluate.metrics import (
     outcome_probabilities,
     rps,
 )
-from plforecast.models.base import MatchModel, UnknownClubError
+from plforecast.models.base import MatchModel, UnknownClubError, drop_odds_columns
 
 log = structlog.get_logger()
 
@@ -107,7 +107,9 @@ def run_backtest(
     unrateable_rows = []
     n_tested = 0
     for split in walk_forward_splits(matches, min_train_matches=min_train_matches):
-        model = model_factory().fit(split.train)
+        # `matches` may legitimately carry odds columns (the caller also scores the
+        # market baseline on it); a model's fit() must never see them (design.md 8.4).
+        model = model_factory().fit(drop_odds_columns(split.train))
         n_tested += split.test.height
         for row in split.test.iter_rows(named=True):
             key = {

@@ -25,7 +25,7 @@ import numpy as np
 import polars as pl
 import structlog
 
-from plforecast.models.base import MatchModel, UnknownClubError
+from plforecast.models.base import MatchModel, UnknownClubError, drop_odds_columns
 from plforecast.simulate.competition import PREMIER_LEAGUE, CompetitionConfig
 from plforecast.simulate.engine import simulate_season
 from plforecast.simulate.standings import season_standings
@@ -121,7 +121,7 @@ def evaluate_season_level(
             train = pl.concat([prior, played], how="vertical_relaxed")
             for name, factory in model_factories.items():
                 try:
-                    model = factory().fit(train)
+                    model = factory().fit(drop_odds_columns(train))
                     result = simulate_season(
                         played.select("home_club_id", "away_club_id", "home_goals", "away_goals"),
                         remaining,

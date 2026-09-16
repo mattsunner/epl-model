@@ -25,7 +25,7 @@ import numpy as np
 import penaltyblog as pb
 import polars as pl
 
-from plforecast.models.base import ClubId, UnknownClubError
+from plforecast.models.base import ClubId, UnknownClubError, assert_no_odds_columns
 
 
 class PoissonModel:
@@ -39,6 +39,7 @@ class PoissonModel:
         self._clubs: set[ClubId] = set()
 
     def fit(self, matches: pl.DataFrame) -> Self:
+        assert_no_odds_columns(matches)
         self._model = pb.models.PoissonGoalsModel(
             goals_home=matches["home_goals"].to_list(),
             goals_away=matches["away_goals"].to_list(),

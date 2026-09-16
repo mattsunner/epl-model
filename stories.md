@@ -608,6 +608,8 @@ invariant; run as an integration lane in CI against a fixture `data_dir`.
 
 ### B-14 · P2 · Recommendation · Implement the leakage guards
 
+**Status**: Done 16 Sep 2026: `models/base.py` adds `assert_no_odds_columns` (called first in every model's `fit()`) and `drop_odds_columns`; `run_backtest` and `evaluate_season_level` strip odds columns from the training frame before fitting, since their shared `matches` frame legitimately carries odds for market scoring. `tests/unit/test_leakage.py`: a hypothesis property test that `attach_decay_weights` never emits a row after `as_of`, a test combining a real `walk_forward_splits` split with `build_club_strength` to check the feature layer fed exactly what the backtest hands a model, and coverage for both odds-column guards.
+
 Evidence: design.md section 8.4 asks for (a) a test that no feature frame contains data at
 or after the kickoff it describes and (b) an assertion that odds are never a model feature.
 `attach_decay_weights` filters `date <= as_of` (inclusive), which is correct for training

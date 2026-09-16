@@ -1,0 +1,211 @@
+import time
+from datetime import UTC, datetime
+from pathlib import Path
+
+import httpx
+import polars as pl
+import pytest
+
+from plforecast.ingest.base import RawPart, cached_get, content_hash, write_snapshot
+
+
+class _StubTransport(httpx.BaseTransport):
+    """Counts requests and always returns the same body, so a test can assert exactly
+    how many live HTTP calls a TTL cache actually avoided."""
+
+    def __init__(self, body: bytes = b"hello") -> None:
+        self.body = body
+        self.calls = 0
+
+    def handle_request(self, request: httpx.Request) -> httpx.Response:
+        self.calls += 1
+        return httpx.Response(200, content=self.body)
+
+
+def _client(transport: httpx.BaseTransport) -> httpx.Client:
+    return httpx.Client(transport=transport)
+
+
+def test_cached_get_is_a_live_fetch_on_a_cold_cache(tmp_path: Path):
+    transport = _StubTransport()
+    part = cached_get(
+        "https://example.test/a",
+        label="a",
+        cache_dir=tmp_path,
+        ttl_hours=24,
+        delay_seconds=0,
+        client=_client(transport),
+    )
+    assert transport.calls == 1
+    assert part.from_cache is False
+    assert part.content == b"hello"
+    assert part.status_code == 200
+
+
+def test_cached_get_within_ttl_is_a_cache_hit_and_makes_no_request(tmp_path: Path):
+    transport = _StubTransport()
+    client = _client(transport)
+    cached_get(
+        "https://example.test/a",
+        label="a",
+        cache_dir=tmp_path,
+        ttl_hours=24,
+        delay_seconds=0,
+        client=client,
+    )
+    second = cached_get(
+        "https://example.test/a",
+        label="a",
+        cache_dir=tmp_path,
+        ttl_hours=24,
+        delay_seconds=0,
+        client=client,
+    )
+    assert transport.calls == 1  # only the first call hit the network
+    assert second.from_cache is True
+    assert second.content == b"hello"
+
+
+def test_cached_get_past_ttl_refetches(tmp_path: Path):
+    transport = _StubTransport()
+    client = _client(transport)
+    cached_get(
+        "https://example.test/a",
+        label="a",
+        cache_dir=tmp_path,
+        ttl_hours=24,
+        delay_seconds=0,
+        client=client,
+    )
+    # A TTL of 0 hours means the just-written cache file is already stale.
+    second = cached_get(
+        "https://example.test/a",
+        label="a",
+        cache_dir=tmp_path,
+        ttl_hours=0,
+        delay_seconds=0,
+        client=client,
+    )
+    assert transport.calls == 2
+    assert second.from_cache is False
+
+
+def test_politeness_delay_applies_only_on_a_live_fetch_not_a_cache_hit(tmp_path: Path):
+    transport = _StubTransport()
+    client = _client(transport)
+    start = time.monotonic()
+    cached_get(
+        "https://example.test/a",
+        label="a",
+        cache_dir=tmp_path,
+        ttl_hours=24,
+        delay_seconds=0.2,
+        client=client,
+    )
+    after_live = time.monotonic()
+    cached_get(
+        "https://example.test/a",
+        label="a",
+        cache_dir=tmp_path,
+        ttl_hours=24,
+        delay_seconds=0.2,
+        client=client,
+    )
+    after_cached = time.monotonic()
+
+    assert after_live - start >= 0.2  # the live fetch paid the delay
+    assert after_cached - after_live < 0.1  # the cache hit did not
+
+
+def test_content_hash_is_stable_across_two_writes(tmp_path: Path):
+    df = pl.DataFrame({"a": [1, 2, 3], "b": ["x", "y", "z"]})
+    df.write_parquet(tmp_path / "one.parquet")
+    df.write_parquet(tmp_path / "two.parquet")
+
+    # Re-reading from two separately-written files, not the same in-memory frame,
+    # exercises exactly what write_snapshot hashes: values, not writer metadata.
+    one = pl.read_parquet(tmp_path / "one.parquet")
+    two = pl.read_parquet(tmp_path / "two.parquet")
+    assert content_hash(one) == content_hash(two)
+
+
+def test_content_hash_changes_when_a_value_changes():
+    a = pl.DataFrame({"a": [1, 2], "b": ["x", "y"]})
+    b = pl.DataFrame({"a": [1, 2], "b": ["x", "z"]})
+    assert content_hash(a) != content_hash(b)
+
+
+def test_content_hash_is_independent_of_column_and_row_order():
+    a = pl.DataFrame({"a": [1, 2], "b": ["x", "y"]})
+    reordered_cols = a.select("b", "a")
+    reordered_rows = a.reverse()
+    assert content_hash(a) == content_hash(reordered_cols)
+    assert content_hash(a) == content_hash(reordered_rows)
+
+
+def _parts() -> list[RawPart]:
+    return [
+        RawPart(
+            url="https://example.test/a",
+            status_code=200,
+            content=b"x",
+            fetched_at=datetime.now(UTC),
+            label="a",
+        )
+    ]
+
+
+def test_write_snapshot_rejects_a_naive_fetched_at(tmp_path: Path):
+    df = pl.DataFrame({"a": [1]})
+    with pytest.raises(ValueError, match="offset-aware"):
+        write_snapshot(
+            df, source="test", fetched_at=datetime.now(), raw_dir=tmp_path, parts=_parts()
+        )
+
+
+def test_write_snapshot_lands_a_snapshot_with_a_utc_directory_name_and_meta(tmp_path: Path):
+    df = pl.DataFrame({"a": [1, 2]})
+    fetched_at = datetime(2026, 9, 16, 12, 0, 0, tzinfo=UTC)
+
+    snapshot_dir = write_snapshot(
+        df, source="test", fetched_at=fetched_at, raw_dir=tmp_path, parts=_parts()
+    )
+
+    assert snapshot_dir.name == "20260916T120000Z"
+    assert (snapshot_dir / "data.parquet").exists()
+    import json
+
+    meta = json.loads((snapshot_dir / "_meta.json").read_text())
+    assert meta["row_count"] == 2
+    assert meta["fetched_at"] == fetched_at.isoformat()
+    assert meta["content_hash"] == content_hash(df)
+    assert meta["parts"][0]["url"] == "https://example.test/a"
+
+
+def test_write_snapshot_never_overwrites_an_existing_snapshot(tmp_path: Path):
+    df = pl.DataFrame({"a": [1]})
+    fetched_at = datetime(2026, 9, 16, 12, 0, 0, tzinfo=UTC)
+
+    write_snapshot(df, source="test", fetched_at=fetched_at, raw_dir=tmp_path, parts=_parts())
+    with pytest.raises(FileExistsError, match="already exists"):
+        write_snapshot(df, source="test", fetched_at=fetched_at, raw_dir=tmp_path, parts=_parts())
+
+
+def test_write_snapshot_a_second_apart_lands_two_snapshots(tmp_path: Path):
+    df = pl.DataFrame({"a": [1]})
+    first = write_snapshot(
+        df,
+        source="test",
+        fetched_at=datetime(2026, 9, 16, 12, 0, 0, tzinfo=UTC),
+        raw_dir=tmp_path,
+        parts=_parts(),
+    )
+    second = write_snapshot(
+        df,
+        source="test",
+        fetched_at=datetime(2026, 9, 16, 12, 0, 1, tzinfo=UTC),
+        raw_dir=tmp_path,
+        parts=_parts(),
+    )
+    assert first != second
+    assert first.exists() and second.exists()

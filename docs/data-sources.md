@@ -100,6 +100,16 @@ ingestion contract every adapter implements.
 - **Refresh**: completed seasons come from soccerdata's cache; the current season is
   always fetched live, because soccerdata's cache has no TTL and a cached in-progress
   season would otherwise be served stale on every weekly run.
+- **Rate limiting**: `Settings.request_delay_seconds` (the politeness delay `cached_get`
+  applies to football-data and FPL) does not apply here -- soccerdata makes its own HTTP
+  requests internally and manages its own pacing; this adapter never calls `cached_get`.
+  The on/off cache is the only lever this adapter has, which is why completed seasons
+  are reused from it rather than re-scraped on every run (story B-15).
+- **Provenance**: `_meta.json` records one part per season batch, each with `from_cache`
+  reflecting whether soccerdata's cache was *permitted* for that batch (not necessarily
+  a confirmed hit -- soccerdata does not report that) and a pseudo-URL carrying the
+  exact `soccerdata` version, since the library and its version are this source's actual
+  provenance rather than a fixed endpoint.
 - **Cross-source check**: home/away goals from Understat's own match records agree with
   football-data.co.uk's for the same fixtures, and every season lands exactly 380 rows
   (40 for the in-progress 2026/27), matching football-data's counts exactly.

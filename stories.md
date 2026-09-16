@@ -258,6 +258,8 @@ as one JSON document (C-07 builds on this).
 
 ### A-13 · P2 · Correction · Snapshot timestamps are local time labelled "Z"
 
+**Status**: Done 16 Sep 2026: every adapter uses `datetime.now(UTC)`; `write_snapshot` rejects naive timestamps and stamps the directory from the UTC instant.
+
 Evidence: `ingest/base.py:119` formats `payload.fetched_at` with a `Z` suffix, but every
 adapter builds the payload with naive `datetime.now()` (`footballdata.py:79`,
 `fpl.py:97`, `understat.py:108,111`). The live `_meta.json` for football-data shows
@@ -313,6 +315,8 @@ Acceptance criteria: unit tests for the three modules; one integration test that
 migrate, curate, evaluate on a small fixture `data_dir`; golden test from A-10.
 
 ### A-18 · P2 · Recommendation · "Never overwrites" is not enforced
+
+**Status**: Done 16 Sep 2026: `write_snapshot` uses `mkdir(exist_ok=False)` and raises a clear `FileExistsError` naming the collision.
 
 Evidence: `ingest/base.py:120-121` uses `mkdir(exist_ok=True)` then `write_parquet`; two
 runs within the same second overwrite each other silently.
@@ -564,6 +568,8 @@ Acceptance criteria: every curated table has `source_snapshot` (raw directory na
 
 ### B-12 · P2 · Correction · `content_hash` hashes the Parquet file, not the content
 
+**Status**: Done 16 Sep 2026: `content_hash()` hashes sorted per-row values via `hash_rows()`, independent of column order, row order, and Parquet/Arrow writer metadata.
+
 Evidence: `ingest/base.py:122` hashes `data.parquet` bytes. Parquet output embeds writer
 metadata and can differ across polars or arrow versions for identical rows, so the hash is
 not a content identity. The site-repo workflow in design.md 10.1 compares content hashes
@@ -606,6 +612,8 @@ test already covering train dates is extended to the feature frames.
 
 ### B-15 · P2 · Recommendation · Understat provenance is weaker than the other adapters
 
+**Status**: Done 16 Sep 2026: one `RawPart` per Understat season batch with `from_cache` reflecting that batch's cache permission and a pseudo-URL carrying the `soccerdata` version; rate-limiting arrangement documented in data-sources.md.
+
 Evidence: `understat.py:104-110` fabricates a URL, hardcodes status 200, uses naive
 timestamps, and records neither the soccerdata version nor whether each season came from
 soccerdata's cache. The politeness delay in `Settings` is not applied (soccerdata manages
@@ -634,6 +642,8 @@ Acceptance criteria: `just prune-raw --keep N` with the latest snapshot always r
 MANIFEST documents the policy.
 
 ### B-18 · P2 · Correction · Odds coercion silently nulls unparsable values
+
+**Status**: Done 16 Sep 2026: `_coercion_failures()` distinguishes an unparsable odds cell from a blank one and logs a per-season count; corrupted cells still land as null, never crash the backfill.
 
 Evidence: `footballdata.py:119` casts odds with `strict=False`, turning any unparsable
 string into null with no count. Nullable is the right schema, but a coercion failure is a

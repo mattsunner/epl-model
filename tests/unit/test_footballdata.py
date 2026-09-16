@@ -9,6 +9,7 @@ from plforecast.ingest.base import RawPart, RawPayload
 from plforecast.ingest.footballdata import (
     CLOSING_ODDS_SETS,
     FootballDataSource,
+    _coercion_failures,
     closing_odds_columns,
     season_code,
     season_label,
@@ -98,3 +99,37 @@ def test_parse_lands_every_closing_set_the_file_carries_and_nulls_the_rest():
     assert df["b365ch"].to_list() == [1.4]
     assert df["avgca"].to_list() == [7.4]
     assert df["bfech"].to_list() == [1.46]
+
+
+def test_coercion_failures_ignores_blank_cells():
+    raw = pl.DataFrame(
+        {"PSCH": ["1.5", "", "  "], "PSCD": ["3.0", "2.0", "1.0"], "PSCA": ["4.0", "5.0", "6.0"]}
+    )
+    assert _coercion_failures(raw, {"PSC"}) == {}
+
+
+def test_coercion_failures_counts_unparsable_non_blank_values():
+    raw = pl.DataFrame(
+        {
+            "PSCH": ["1.5", "N/A", "oops"],
+            "PSCD": ["3.0", "2.0", "1.0"],
+            "PSCA": ["4.0", "5.0", "6.0"],
+        }
+    )
+    assert _coercion_failures(raw, {"PSC"}) == {"PSCH": 2}
+
+
+def test_parse_still_lands_a_null_for_a_corrupted_odds_cell_and_does_not_crash():
+    """A corrupted cell must not crash the backfill; it lands as null, same as a blank
+    cell -- the distinction is only in what gets logged (story B-18), not the schema."""
+    csv = (
+        "Div,Date,HomeTeam,AwayTeam,FTHG,FTAG,FTR,PSCH,PSCD,PSCA\n"
+        "E0,08/08/2015,Bournemouth,Aston Villa,0,1,A,not-a-number,4.0,3.5\n"
+    )
+    payload = _payload(csv.encode())
+
+    df = FootballDataSource().parse(payload)
+
+    assert df.height == 1
+    assert df["psch"].to_list() == [None]
+    assert df["pscd"].to_list() == [4.0]

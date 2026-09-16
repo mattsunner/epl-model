@@ -2,6 +2,11 @@
 into a typed frame, with no transformation beyond parsing. See docs/data-sources.md
 and design.md section 5.2 for the requirements each adapter must satisfy:
 immutability, provenance, politeness, caching, schema validation.
+
+Every timestamp here is offset-aware UTC, never naive `datetime.now()`: `write_snapshot`
+asserts this on `fetched_at` and raises rather than silently landing a timestamp that
+looks right until it is compared against anything else in UTC (the same class of bug
+`docs/data-sources.md` documents for FPL's `kickoff_time`).
 """
 
 from __future__ import annotations
@@ -104,6 +109,23 @@ def cached_get(
     )
 
 
+def content_hash(df: pl.DataFrame) -> str:
+    """A hash of `df`'s actual values, independent of column order, row order, or the
+    Parquet/Arrow writer's own metadata -- which embeds a version-specific schema blob
+    that can differ across polars or pyarrow releases for byte-for-byte identical rows,
+    so hashing `data.parquet` itself (the previous approach) is not a content identity.
+    The site-repo pull workflow (design.md 10.1) compares this hash to decide whether a
+    fetched forecast actually changed, so it has to survive a dependency upgrade.
+
+    Column order is fixed by sorting names; each row's own hash (`DataFrame.hash_rows`,
+    a per-row value hash polars computes independent of any writer) is combined after
+    sorting, so row order does not matter either."""
+    ordered = df.select(sorted(df.columns))
+    row_hashes = sorted(ordered.hash_rows().to_list())
+    payload = ",".join(str(h) for h in row_hashes).encode()
+    return hashlib.sha256(payload).hexdigest()
+
+
 def write_snapshot(
     df: pl.DataFrame,
     *,
@@ -113,19 +135,31 @@ def write_snapshot(
     parts: list[RawPart],
 ) -> Path:
     """Land a parsed frame as an immutable, timestamped Parquet snapshot with a provenance
-    sidecar. Never overwrites: every call creates a new snapshot directory."""
-    snapshot_dir = raw_dir / source / fetched_at.strftime("%Y%m%dT%H%M%SZ")
-    snapshot_dir.mkdir(parents=True, exist_ok=True)
+    sidecar. Never overwrites: `mkdir(exist_ok=False)` raises rather than silently
+    clobbering a snapshot landed in the same second -- two ingests of the same source
+    close together is a real case (a retry, a script re-run), not a hypothetical one."""
+    if fetched_at.tzinfo is None:
+        raise ValueError(
+            f"write_snapshot requires an offset-aware fetched_at, got a naive {fetched_at!r}"
+        )
+    snapshot_dir = raw_dir / source / fetched_at.astimezone(UTC).strftime("%Y%m%dT%H%M%SZ")
+    try:
+        snapshot_dir.mkdir(parents=True, exist_ok=False)
+    except FileExistsError as exc:
+        raise FileExistsError(
+            f"snapshot directory already exists: {snapshot_dir}. Raw snapshots are "
+            "immutable and never overwritten; if this is a genuine same-second re-run, "
+            "wait a second and retry."
+        ) from exc
 
     data_path = snapshot_dir / "data.parquet"
     df.write_parquet(data_path)
-    content_hash = hashlib.sha256(data_path.read_bytes()).hexdigest()
 
     meta = {
         "source": source,
         "fetched_at": fetched_at.isoformat(),
         "row_count": df.height,
-        "content_hash": content_hash,
+        "content_hash": content_hash(df),
         "parts": [
             {
                 "url": part.url,

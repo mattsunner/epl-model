@@ -21,6 +21,13 @@ always fetched live (`no_cache=True`), whether the run is a full backfill or an
 incremental refresh (`since` set): a cached copy of an in-progress season is stale by
 definition, and reusing it would land last week's 40 matches every week (story B-08).
 
+Provenance: one RawPart per season batch (matching the other adapters' one-part-per-
+season convention as closely as soccerdata's bulk-fetch API allows), so `_meta.json`
+records each batch's own cache state via `from_cache`, not one blanket value for the
+whole fetch. The part's pseudo-URL also carries the exact `soccerdata` version, since
+this adapter's actual provenance is "this scraper library, this version", unlike the
+other two adapters where the URL alone identifies the source (story B-15).
+
 Season input format: seasons are passed to soccerdata as `season_code()` pair-code
 strings (e.g. "2122"), never bare integers. Confirmed by hand against the live site: a
 bare integer season (e.g. `2021`, intending 2021/22) is silently misinterpreted by
@@ -33,7 +40,7 @@ backfill run against this exact bug landed 3,840 rows instead of 4,220, with the
 from __future__ import annotations
 
 import io
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 
 import pandas as pd
 import pandera.polars as pa
@@ -93,7 +100,8 @@ class UnderstatSource:
         else:
             start_years = [current_start_year]
 
-        frames = []
+        parts = []
+        now = datetime.now(UTC)
         for years, no_cache in season_batches(start_years, current_start_year):
             scraper = sd.Understat(
                 leagues=self.config.understat_league,
@@ -106,31 +114,32 @@ class UnderstatSource:
             # noise, already confirmed correct above for our pair-code-string input -- not
             # suppressed here because soccerdata fetches seasons from a worker thread, so a
             # filter registered in this thread does not reliably reach it.
-            frames.append(scraper.read_team_match_stats().reset_index())
-            log.info(
-                "understat.fetched",
-                seasons=[season_label(y) for y in years],
-                no_cache=no_cache,
+            batch = scraper.read_team_match_stats().reset_index()
+            label = season_label(years[0]) + (
+                f"-{season_label(years[-1])}" if len(years) > 1 else ""
             )
-        raw = pd.concat(frames, ignore_index=True)
+            log.info(
+                "understat.fetched", seasons=[season_label(y) for y in years], no_cache=no_cache
+            )
 
-        buffer = io.BytesIO()
-        raw.to_parquet(buffer)
-        label = season_label(start_years[0]) + (
-            f"-{season_label(start_years[-1])}" if len(start_years) > 1 else ""
-        )
-        part = RawPart(
-            url=f"understat:{self.config.understat_league}:{label}",
-            status_code=200,
-            content=buffer.getvalue(),
-            fetched_at=datetime.now(),
-            label=label,
-        )
-        return RawPayload(source=self.name, fetched_at=datetime.now(), parts=[part])
+            buffer = io.BytesIO()
+            batch.to_parquet(buffer)
+            parts.append(
+                RawPart(
+                    url=f"understat+soccerdata=={sd.__version__}:{self.config.understat_league}:{label}",
+                    status_code=200,
+                    content=buffer.getvalue(),
+                    fetched_at=now,
+                    label=label,
+                    from_cache=not no_cache,
+                )
+            )
+
+        return RawPayload(source=self.name, fetched_at=now, parts=parts)
 
     def parse(self, payload: RawPayload) -> pl.DataFrame:
-        raw_pd = pd.read_parquet(io.BytesIO(payload.parts[0].content))
-        raw = pl.from_pandas(raw_pd)
+        batches = [pd.read_parquet(io.BytesIO(part.content)) for part in payload.parts]
+        raw = pl.from_pandas(pd.concat(batches, ignore_index=True))
 
         df = raw.select(
             pl.col("season_id").map_elements(season_label, return_dtype=pl.Utf8).alias("season"),

@@ -22,7 +22,7 @@ raw numeric team IDs; resolving them to canonical club IDs is the entities layer
 from __future__ import annotations
 
 import json
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 
 import httpx
 import pandera.polars as pa
@@ -96,7 +96,7 @@ def _fetch_raw(url: str, *, label: str, config: Settings, client: httpx.Client) 
         delay_seconds=config.request_delay_seconds,
         client=client,
     )
-    return RawPayload(source=f"fpl-{label}", fetched_at=datetime.now(), parts=[part])
+    return RawPayload(source=f"fpl-{label}", fetched_at=datetime.now(UTC), parts=[part])
 
 
 def _client(config: Settings) -> httpx.Client:

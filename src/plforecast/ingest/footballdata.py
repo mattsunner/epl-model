@@ -12,7 +12,7 @@ applied at curate time (design.md section 8.3, ADR 0007).
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 
 import httpx
 import pandera.polars as pa
@@ -90,6 +90,32 @@ def _closing_odds_exprs(present: set[str]) -> list[pl.Expr]:
     return exprs
 
 
+def _coercion_failures(raw: pl.DataFrame, present: set[str]) -> dict[str, int]:
+    """Column -> count of values that are non-blank in the raw string column but land
+    null after `cast(Float64, strict=False)`: a genuinely unparsable value ("N/A", a
+    stray comma), not the ordinary "cell was empty" case `MatchSchema`'s nullable odds
+    fields already tolerate. The two are different events -- an empty cell is expected
+    coverage gap, an unparsable one is the site's data changing shape under us -- so
+    they must not be conflated into one silent null."""
+    failures: dict[str, int] = {}
+    for prefix in present:
+        for suffix in ("H", "D", "A"):
+            raw_col = f"{prefix}{suffix}"
+            count = (
+                raw.select(
+                    (
+                        pl.col(raw_col).str.strip_chars().ne("")
+                        & pl.col(raw_col).cast(pl.Float64, strict=False).is_null()
+                    ).sum()
+                )
+                .to_series()
+                .item()
+            )
+            if count:
+                failures[raw_col] = int(count)
+    return failures
+
+
 class FootballDataSource:
     name = "football-data"
 
@@ -124,7 +150,7 @@ class FootballDataSource:
                     )
                 )
 
-        return RawPayload(source=self.name, fetched_at=datetime.now(), parts=parts)
+        return RawPayload(source=self.name, fetched_at=datetime.now(UTC), parts=parts)
 
     def parse(self, payload: RawPayload) -> pl.DataFrame:
         frames = []
@@ -150,6 +176,14 @@ class FootballDataSource:
                 )
             if not present:
                 log.warning("footballdata.no_closing_odds_at_all", season=part.label)
+
+            failures = _coercion_failures(raw, present)
+            if failures:
+                log.warning(
+                    "footballdata.odds_coercion_failed",
+                    season=part.label,
+                    failures=failures,
+                )
 
             frame = raw.select(
                 pl.lit(part.label).alias("season"),

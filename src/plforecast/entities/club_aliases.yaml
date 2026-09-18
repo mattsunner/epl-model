@@ -9,90 +9,95 @@
 # but six clubs). fpl_code is the FPL API's *stable* team code (`teams[].code`), which
 # survives promotion and relegation -- unlike `teams[].id`, a 1-20 index re-assigned
 # every season; null for clubs not in the current top flight (fill in when they return).
-# clubelo_name and transfermarkt_id are placeholders: null until those adapters exist.
+# clubelo_name is ClubElo's own site slug (clubelo.com/{slug}), found by probing the
+# site's per-country index pages (design.md 5.1, story C-16) since it has no directory
+# API; null for huddersfield, stoke and watford, whose slugs could not be resolved this
+# way -- all three have been out of the top flight since before ClubElo's own cached
+# coverage window starts, so this costs nothing real (ingest/clubelo.py skips them).
+# transfermarkt_id is a placeholder: null until that adapter exists (deferred to v2).
 clubs:
 - club_id: arsenal
   display_name: Arsenal
   football_data_name: Arsenal
   fpl_code: 3
-  clubelo_name: null
+  clubelo_name: Arsenal
   understat_name: Arsenal
   transfermarkt_id: null
 - club_id: aston-villa
   display_name: Aston Villa
   football_data_name: Aston Villa
   fpl_code: 7
-  clubelo_name: null
+  clubelo_name: AstonVilla
   understat_name: Aston Villa
   transfermarkt_id: null
 - club_id: bournemouth
   display_name: Bournemouth
   football_data_name: Bournemouth
   fpl_code: 91
-  clubelo_name: null
+  clubelo_name: Bournemouth
   understat_name: Bournemouth
   transfermarkt_id: null
 - club_id: brentford
   display_name: Brentford
   football_data_name: Brentford
   fpl_code: 94
-  clubelo_name: null
+  clubelo_name: Brentford
   understat_name: Brentford
   transfermarkt_id: null
 - club_id: brighton
   display_name: Brighton
   football_data_name: Brighton
   fpl_code: 36
-  clubelo_name: null
+  clubelo_name: Brighton
   understat_name: Brighton
   transfermarkt_id: null
 - club_id: burnley
   display_name: Burnley
   football_data_name: Burnley
   fpl_code: null
-  clubelo_name: null
+  clubelo_name: Burnley
   understat_name: Burnley
   transfermarkt_id: null
 - club_id: cardiff
   display_name: Cardiff City
   football_data_name: Cardiff
   fpl_code: null
-  clubelo_name: null
+  clubelo_name: Cardiff
   understat_name: Cardiff
   transfermarkt_id: null
 - club_id: chelsea
   display_name: Chelsea
   football_data_name: Chelsea
   fpl_code: 8
-  clubelo_name: null
+  clubelo_name: Chelsea
   understat_name: Chelsea
   transfermarkt_id: null
 - club_id: coventry
   display_name: Coventry City
   football_data_name: Coventry
   fpl_code: 9
-  clubelo_name: null
+  clubelo_name: Coventry
   understat_name: Coventry
   transfermarkt_id: null
 - club_id: crystal-palace
   display_name: Crystal Palace
   football_data_name: Crystal Palace
   fpl_code: 31
-  clubelo_name: null
+  clubelo_name: CrystalPalace
   understat_name: Crystal Palace
   transfermarkt_id: null
 - club_id: everton
   display_name: Everton
   football_data_name: Everton
   fpl_code: 11
-  clubelo_name: null
+  clubelo_name: Everton
   understat_name: Everton
   transfermarkt_id: null
 - club_id: fulham
   display_name: Fulham
   football_data_name: Fulham
   fpl_code: 54
-  clubelo_name: null
+  clubelo_name: Fulham
   understat_name: Fulham
   transfermarkt_id: null
 - club_id: huddersfield
@@ -106,98 +111,98 @@ clubs:
   display_name: Hull City
   football_data_name: Hull
   fpl_code: 88
-  clubelo_name: null
+  clubelo_name: Hull
   understat_name: Hull
   transfermarkt_id: null
 - club_id: ipswich
   display_name: Ipswich Town
   football_data_name: Ipswich
   fpl_code: 40
-  clubelo_name: null
+  clubelo_name: Ipswich
   understat_name: Ipswich
   transfermarkt_id: null
 - club_id: leeds
   display_name: Leeds United
   football_data_name: Leeds
   fpl_code: 2
-  clubelo_name: null
+  clubelo_name: Leeds
   understat_name: Leeds
   transfermarkt_id: null
 - club_id: leicester
   display_name: Leicester City
   football_data_name: Leicester
   fpl_code: null
-  clubelo_name: null
+  clubelo_name: Leicester
   understat_name: Leicester
   transfermarkt_id: null
 - club_id: liverpool
   display_name: Liverpool
   football_data_name: Liverpool
   fpl_code: 14
-  clubelo_name: null
+  clubelo_name: Liverpool
   understat_name: Liverpool
   transfermarkt_id: null
 - club_id: luton
   display_name: Luton Town
   football_data_name: Luton
   fpl_code: null
-  clubelo_name: null
+  clubelo_name: Luton
   understat_name: Luton
   transfermarkt_id: null
 - club_id: man-city
   display_name: Manchester City
   football_data_name: Man City
   fpl_code: 43
-  clubelo_name: null
+  clubelo_name: ManCity
   understat_name: Manchester City
   transfermarkt_id: null
 - club_id: man-united
   display_name: Manchester United
   football_data_name: Man United
   fpl_code: 1
-  clubelo_name: null
+  clubelo_name: ManUnited
   understat_name: Manchester United
   transfermarkt_id: null
 - club_id: middlesbrough
   display_name: Middlesbrough
   football_data_name: Middlesbrough
   fpl_code: null
-  clubelo_name: null
+  clubelo_name: Middlesbrough
   understat_name: Middlesbrough
   transfermarkt_id: null
 - club_id: newcastle
   display_name: Newcastle United
   football_data_name: Newcastle
   fpl_code: 4
-  clubelo_name: null
+  clubelo_name: Newcastle
   understat_name: Newcastle United
   transfermarkt_id: null
 - club_id: norwich
   display_name: Norwich City
   football_data_name: Norwich
   fpl_code: null
-  clubelo_name: null
+  clubelo_name: Norwich
   understat_name: Norwich
   transfermarkt_id: null
 - club_id: nottm-forest
   display_name: Nottingham Forest
   football_data_name: Nott'm Forest
   fpl_code: 17
-  clubelo_name: null
+  clubelo_name: Forest
   understat_name: Nottingham Forest
   transfermarkt_id: null
 - club_id: sheffield-united
   display_name: Sheffield United
   football_data_name: Sheffield United
   fpl_code: null
-  clubelo_name: null
+  clubelo_name: SheffieldUnited
   understat_name: Sheffield United
   transfermarkt_id: null
 - club_id: southampton
   display_name: Southampton
   football_data_name: Southampton
   fpl_code: null
-  clubelo_name: null
+  clubelo_name: Southampton
   understat_name: Southampton
   transfermarkt_id: null
 - club_id: stoke
@@ -211,21 +216,21 @@ clubs:
   display_name: Sunderland
   football_data_name: Sunderland
   fpl_code: 56
-  clubelo_name: null
+  clubelo_name: Sunderland
   understat_name: Sunderland
   transfermarkt_id: null
 - club_id: swansea
   display_name: Swansea City
   football_data_name: Swansea
   fpl_code: null
-  clubelo_name: null
+  clubelo_name: Swansea
   understat_name: Swansea
   transfermarkt_id: null
 - club_id: tottenham
   display_name: Tottenham Hotspur
   football_data_name: Tottenham
   fpl_code: 6
-  clubelo_name: null
+  clubelo_name: Tottenham
   understat_name: Tottenham
   transfermarkt_id: null
 - club_id: watford
@@ -239,20 +244,20 @@ clubs:
   display_name: West Bromwich Albion
   football_data_name: West Brom
   fpl_code: null
-  clubelo_name: null
+  clubelo_name: WestBrom
   understat_name: West Bromwich Albion
   transfermarkt_id: null
 - club_id: west-ham
   display_name: West Ham United
   football_data_name: West Ham
   fpl_code: null
-  clubelo_name: null
+  clubelo_name: WestHam
   understat_name: West Ham
   transfermarkt_id: null
 - club_id: wolves
   display_name: Wolverhampton Wanderers
   football_data_name: Wolves
   fpl_code: null
-  clubelo_name: null
+  clubelo_name: Wolves
   understat_name: Wolverhampton Wanderers
   transfermarkt_id: null

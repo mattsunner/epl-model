@@ -35,6 +35,10 @@ def ingest(source: str) -> None:
         from plforecast.ingest.understat import ingest as ingest_understat
 
         ingest_understat()
+    elif source == "clubelo":
+        from plforecast.ingest.clubelo import ingest as ingest_clubelo
+
+        ingest_clubelo()
     else:
         raise typer.BadParameter(f"unknown source: {source!r}")
 

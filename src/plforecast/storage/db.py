@@ -37,6 +37,7 @@ RAW_VIEWS: dict[str, str] = {
     "raw_fpl_fixtures": "fpl-fixtures",
     "raw_fpl_events": "fpl-events",
     "raw_understat_team_match": "understat",
+    "raw_clubelo_ratings": "clubelo",
 }
 
 

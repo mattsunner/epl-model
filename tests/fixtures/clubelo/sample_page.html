@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><title>ClubElo</title>
+</head>
+<body>
+    <div class="stammblatt">
+        <div id="chartElo"></div>
+        <script>
+            var vegaJson = {
+              "$schema": "https://vega.github.io/schema/vega-lite/v5.20.1.json",
+              "data": {
+                "name": "data-sample"
+              },
+              "datasets": {
+                "data-sample": [
+                  {
+                    "Date": "2022-09-18T00:00:00",
+                    "Elo": 1880.163985793919,
+                    "Golo": 1.4066594,
+                    "segment_id": 0
+                  },
+                  {
+                    "Date": "2022-10-01T00:00:00",
+                    "Elo": 1886.2928380161823,
+                    "Golo": 1.420711,
+                    "segment_id": 0
+                  },
+                  {
+                    "Date": "2022-10-06T00:00:00",
+                    "Elo": 1889.8331186380105,
+                    "Golo": 1.4091666,
+                    "segment_id": 0
+                  }
+                ]
+              },
+              "vconcat": []
+            };
+            vegaEmbed('#chartElo', vegaJson,{renderer: 'svg', actions: false}).catch(console.error);
+        </script>
+    </div>
+</body>
+</html>

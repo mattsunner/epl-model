@@ -27,10 +27,13 @@ ingest-fpl:
 ingest-understat:
     uv run plforecast ingest understat
 
+ingest-clubelo:
+    uv run plforecast ingest clubelo
+
 migrate:
     uv run plforecast db-migrate
 
-bootstrap: ingest-footballdata ingest-fpl ingest-understat curate
+bootstrap: ingest-footballdata ingest-fpl ingest-understat ingest-clubelo curate
 
 curate:
     uv run plforecast curate

@@ -116,7 +116,7 @@ pl-forecast/
 │   │   ├── footballdata.py        # results + every closing-odds set (ADR 0007)
 │   │   ├── understat.py           # team-level xG via soccerdata; current season always live
 │   │   ├── fpl.py                 # fixtures, kickoff times, roster (stable `code`), availability, gameweek calendar
-│   │   ├── clubelo.py             # planned (story C-16)
+│   │   ├── clubelo.py             # built (story C-16); ratings only, no match model consumes it
 │   │   └── transfermarkt.py       # planned, v2 (story C-16)
 │   │
 │   ├── entities/
@@ -224,20 +224,26 @@ Detailed inventory lives in `docs/data-sources.md`. Summary of what each source 
 | football-data.co.uk | Match results and closing odds, E0 and E1, 1993 onward | Weekly | Built |
 | Understat | Team and shot-level xG, 2014/15 onward | Weekly | Built (team-level) |
 | FPL API | Fixture list, kickoff times, player availability and suspensions | Weekly | Built |
-| ClubElo | Independent strength prior, external benchmark probabilities | Weekly | v1 (story C-16) |
+| ClubElo | Independent strength prior for the promoted-club prior | Weekly | Built (story C-16), shipped inactive |
 | Transfermarkt | Squad market value, promoted-club prior, injury history | Per transfer window | Deferred to v2 (story C-16) |
 
 FBref is explicitly excluded as a live source. Its Opta-derived advanced stats were removed in January 2026 and no longer update.
 
-**ClubElo in v1, Transfermarkt deferred (story C-16, decided 16 September 2026).**
-ClubElo is a single CSV endpoint, needs no club-alias maintenance beyond the usual
-per-source name column, and directly unblocks `build_prior()`'s already-built
-`external_rating`/`external_weight` parameters (ADR 0006) -- it is the one remaining
-piece of the *decided* promoted-club prior design (design.md section 6.3, decision 2 in
-section 14) with no adapter yet. Transfermarkt adds a third club-naming scheme to
-maintain and is scraped (ToS-sensitive) for a signal (squad market value) the prior
-does not strictly need: ClubElo's own rating already blends recent form and squad
-quality. Revisit Transfermarkt if ClubElo alone proves insufficient once backtested.
+**ClubElo built, Transfermarkt deferred (story C-16, decided 16 September 2026, adapter
+landed 18 September 2026).** `ingest/clubelo.py` unblocks `build_prior()`'s
+`external_rating`/`external_weight` parameters (ADR 0006) -- the one remaining piece of
+the *decided* promoted-club prior design (design.md section 6.3, decision 2 in section
+14) that had no adapter yet. **Not a single CSV endpoint as originally assumed here**:
+that classic API (`api.clubelo.com`) is gone; see `docs/data-sources.md`'s ClubElo
+section for what the adapter actually does against the redesigned site, including two
+real coverage gaps (history from ~2022/23 only, 32 of 35 clubs resolved). Wired but
+shipped inactive (`config.clubelo_prior_weight = 0`) pending more evaluation evidence
+than the one small-sample run behind it so far
+(`notebooks/03-prototypes/03-04-clubelo-prior-workbench.ipynb`). Transfermarkt adds a
+third club-naming scheme to maintain and is scraped (ToS-sensitive) for a signal
+(squad market value) the prior does not strictly need: ClubElo's own rating already
+blends recent form and squad quality. Revisit Transfermarkt if ClubElo alone proves
+insufficient once there is enough evaluation evidence to trust it.
 
 ### 5.2 Ingestion contract
 
@@ -649,7 +655,7 @@ Roughly 15 gameweeks to the December midpoint.
 | Phase | Deliverable | Exit criterion |
 | --- | --- | --- |
 | 1. Skeleton | Repo, toolchain, CI, package layout, DuckDB schema | `just test` passes on an empty pipeline |
-| 2. Ingest | football-data.co.uk, Understat, FPL, club dimension, curated marts (ClubElo deferred to a later milestone per story C-16; Transfermarkt deferred to v2) | Every club resolves; marts populated 2015/16 to date |
+| 2. Ingest | football-data.co.uk, Understat, FPL, ClubElo, club dimension, curated marts (Transfermarkt deferred to v2, story C-16) | Every club resolves; marts populated 2015/16 to date |
 | 3. Baseline end to end | Poisson model plus simulation plus artifact plus published page | A forecast is live, however crude |
 | 4. Evaluation | RPS, calibration, walk-forward backtest, market baseline | Published baseline numbers in `docs/evaluation.md` |
 | 5. Dixon-Coles | Time decay, tuned `xi` | Beats Poisson on held-out RPS |

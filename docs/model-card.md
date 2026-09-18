@@ -78,11 +78,19 @@ draws specifically).
 - **PPDA (passes per defensive action) is landed but not used**, and would need
   winsorising before any feature used it -- the raw column has extreme values (an
   observed maximum of 193) that a small-sample-size match can produce.
-- **The promoted-club prior is not part of the backtest.** It is wired into live
-  forecasting (`plforecast forecast`) but `docs/evaluation.md`'s walk-forward numbers do
-  not exercise it, so the backtest's own RPS figures do not reflect whatever
+- **The promoted-club prior is still not part of the main backtest.** It is wired into
+  live forecasting (`plforecast forecast`) but `docs/evaluation.md`'s walk-forward
+  numbers do not exercise it, so the headline RPS figures do not reflect whatever
   improvement (or regression) the prior contributes for a promoted club's early
-  matches. This is a real gap in the evaluation, not a claim that the prior helps.
+  matches. A dedicated (but small-sample) evaluation exists separately
+  (`notebooks/03-prototypes/03-04-clubelo-prior-workbench.ipynb`, story C-16): it
+  reconstructed every historical promoted-club-like debut in ClubElo's coverage
+  window and found no clear RPS improvement from shrinking the prior toward a
+  ClubElo-derived rating, on only 18 matches -- suggestive, not conclusive. That
+  mechanism (`config.clubelo_prior_weight`) is built and available but shipped
+  inactive (defaults to `0`) for exactly this reason. The main walk-forward harness
+  itself still does not exercise the prior at all; this is a real gap, not a claim
+  that any version of the prior helps or hurts.
 
 ## Known failure mode: promoted clubs, and how it was found
 

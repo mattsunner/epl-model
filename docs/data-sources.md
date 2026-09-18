@@ -137,6 +137,36 @@ ingestion contract every adapter implements.
   built on them must cap or winsorise first rather than feed the raw column straight
   into a rate estimate.
 
-## ClubElo, Transfermarkt
+## ClubElo
 
-Not yet built. See design.md section 5.1 for their intended responsibility.
+- **Responsibility**: independent external strength rating, feeding the promoted-club
+  prior's `external_rating` (design.md section 5.1, ADR 0006, story C-16). Not a match
+  model input -- `ingest/clubelo.py` lands ratings, `features/clubelo.py` bridges Elo
+  to the prior's rate-field vocabulary, `forecasting._inject_promoted_club_prior`
+  applies it when `config.clubelo_prior_weight > 0` (default `0`, off).
+- **A real finding that corrects this project's own earlier assumption**: the design
+  originally expected "a single CSV endpoint" (`api.clubelo.com`). That endpoint is
+  gone -- it now returns a bare `502` and appears discontinued. The current site,
+  `clubelo.com`, serves one HTML page per club with its rating history embedded as a
+  Vega-Lite chart spec (a `vegaJson = {...}` JSON literal in the page source, extracted
+  by `json.JSONDecoder().raw_decode`, not fragile regex scraping). `ingest/clubelo.py`
+  fetches that page per club through the same `cached_get` every other adapter uses.
+- **Coverage is narrower than the original design expected in two ways.** The site's
+  cached history only goes back to roughly September 2022, not the full 2015/16
+  backfill window every other source covers. And only 32 of the 35 clubs in
+  `club_aliases.yaml` have a resolvable `clubelo_name` -- Huddersfield, Stoke and
+  Watford could not be found this way (the site has no directory API; slugs were found
+  by probing its per-country index pages, e.g. `clubelo.com/ENG`), and all three have
+  been out of the top flight since before ClubElo's own cached window starts, so the
+  gap costs nothing real.
+- **Access**: no auth, no published rate limit; the adapter applies the same politeness
+  delay and TTL cache as football-data and FPL.
+- **Shipped inactive**: `config.clubelo_prior_weight` defaults to `0`. The only
+  evaluation run so far (`notebooks/03-prototypes/03-04-clubelo-prior-workbench.ipynb`)
+  was inconclusive on 18 historical debut-era matches -- RPS differences across a full
+  weight sweep from 0 to 1 stayed within noise for that sample size, even though the
+  live forecast shifted materially for at least one promoted club. See `docs/adr/0006-promoted-club-priors.md`.
+
+## Transfermarkt
+
+Not yet built (deferred to v2, story C-16). See design.md section 5.1.

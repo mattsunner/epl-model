@@ -924,7 +924,7 @@ Recommended order, with the P0 corrections first in each window:
 
 ### C-16 · P2 · Recommendation · ClubElo and Transfermarkt: decide whether they are v1
 
-**Status**: Done 16 Sep 2026: ClubElo decided as v1 (unblocks the already-built `external_rating` path in `build_prior()`), Transfermarkt deferred to v2. design.md 5.1, milestone 2, and decision 7 in section 14 updated. The adapter itself is not built (out of scope for 'decide whether they are v1').
+**Status**: Done 16 Sep 2026: ClubElo decided as v1 (unblocks the already-built `external_rating` path in `build_prior()`), Transfermarkt deferred to v2. design.md 5.1, milestone 2, and decision 7 in section 14 updated. Adapter built 18 Sep 2026 (`ingest/clubelo.py`, `features/clubelo.py`, wired into `forecasting._inject_promoted_club_prior`; prototyped first in `notebooks/03-prototypes/03-02-clubelo-workbench.ipynb` and `03-04-clubelo-prior-workbench.ipynb`), closing out the story's remaining scope. Shipped inactive: `config.clubelo_prior_weight` defaults to `0`, since `03-04`'s evaluation was inconclusive on 18 historical matches. `api.clubelo.com`'s classic CSV endpoint (the site the original recommendation assumed) is gone; the adapter scrapes the redesigned site's embedded chart data instead, with two real coverage gaps documented in `docs/data-sources.md` (history from ~2022/23 only; 32 of 35 clubs resolved). Not fully done: not in the main walk-forward backtest, and Transfermarkt (still deferred) was scoped in this story too.
 
 Evidence: design.md lists five sources and milestone 2 requires "all five adapters". The
 prior module already supports an external rating but nothing supplies one. Both adapters

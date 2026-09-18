@@ -169,6 +169,22 @@ pseudo-matches is the prior's own *effective sample size* (`mean / std²`, avera
 across the four rate fields and clamped to 4-38), so a wide, uncertain prior
 contributes only a little evidence and a tighter one contributes more.
 
+**Shrinking the anchor toward ClubElo (ADR 0006, story C-16).** `features/clubelo.py`
+bridges ClubElo's Elo scale to the prior's rate-field vocabulary: four small
+log-linear regressions, `log(rate) = intercept + slope * elo`, fit on established
+clubs with both a decayed rate snapshot and a ClubElo rating at the same point in
+time, refit at every call site rather than cached (no lookahead bias). Applying that
+fit to a promoted club's own current Elo -- available even with zero top-flight
+history, since ClubElo covers the Championship -- gives `build_prior()`'s
+`external_rating`; `config.clubelo_prior_weight` is `build_prior()`'s own
+`external_weight`, in `[0, 1]`. Defaults to `0` (the survival-zone anchor alone,
+unshrunk): the only evaluation run so far
+(`notebooks/03-prototypes/03-04-clubelo-prior-workbench.ipynb`) reconstructed every
+historical promoted-club-like debut ClubElo's cached history could reach and found no
+clear RPS improvement on that small sample, even though the live forecast shifted
+materially for at least one promoted club. A club with no resolvable ClubElo rating
+falls back to the anchor alone regardless of the weight setting.
+
 ## 5. Simulation
 
 `simulate/engine.py` draws every remaining fixture's scoreline for every simulated

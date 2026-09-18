@@ -1,6 +1,13 @@
 # ADR 0006: Promoted-club priors
 
-**Status**: accepted 14 September 2026; implementation path revised 16 September 2026.
+**Status**: accepted 14 September 2026; implementation path revised 16 September 2026;
+option 2 (ClubElo) built 18 September 2026 (`ingest/clubelo.py`, `features/clubelo.py`)
+but shipped inactive -- `config.clubelo_prior_weight` defaults to `0`. The one
+evaluation run behind it (`notebooks/03-prototypes/03-04-clubelo-prior-workbench
+.ipynb`) was inconclusive on 18 historical debut-era matches (RPS differences across a
+full weight sweep stayed within noise for that sample size), even though the live
+forecast shifted materially for at least one promoted club. Revisit the default once
+there is more evidence than that.
 
 ## Context
 
@@ -26,10 +33,12 @@ Sunderland near-certain relegation.
 
 - The prior **must carry real variance**, never a point estimate. The prior mean is
   anchored on the long record, not the last two seasons.
-- Option 3 is what is built today (`features/priors.py`): the survival-zone reference,
-  reporting mean points alongside as a cross-check against the 22-season figure of 33.8
-  points for 18th place. Option 2 is structurally supported (`external_rating`,
-  `external_weight`) and becomes live when ClubElo is ingested (story C-16).
+- Option 3 (`features/priors.py`) is the anchor every prior uses: the survival-zone
+  reference, reporting mean points alongside as a cross-check against the 22-season
+  figure of 33.8 points for 18th place. Option 2 (ClubElo, `features/clubelo.py`,
+  `ingest/clubelo.py`) is built and wired through `build_prior()`'s `external_rating`/
+  `external_weight` (story C-16), but `config.clubelo_prior_weight` defaults to `0` --
+  see the status line above for why.
 - **Promoted clubs are not interchangeable.** `needs_prior` is the gate, and it counts
   evidence the way the models weight it: each past match counts `exp(-xi * days)`. A
   club with a recent top-flight season (Ipswich, 2024/25) keeps its data and is shrunk

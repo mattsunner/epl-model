@@ -19,12 +19,14 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
+from typing import cast
 
 import polars as pl
 import structlog
 
 from plforecast.config import Settings, settings
 from plforecast.entities.clubs import load_club_dimension
+from plforecast.features.clubelo import external_rating_for_club, fit_elo_to_rate
 from plforecast.features.priors import (
     PRIOR_GATE_XI,
     build_prior,
@@ -169,11 +171,22 @@ def _inject_promoted_club_prior(
     season_label: str,
     as_of: date,
     seed: int,
+    elo_ratings: pl.DataFrame | None = None,
+    external_weight: float = 0.0,
 ) -> tuple[pl.DataFrame, list[str]]:
     """The promoted-club prior (ADR 0006, story C-08): a club in the fixture list with
     less than half a season of decay-weighted evidence gets pseudo-observations built
     from the survival-zone reference, appended to `training`. Returns the (possibly
-    unchanged) training frame and the list of clubs the prior covered."""
+    unchanged) training frame and the list of clubs the prior covered.
+
+    `elo_ratings` (stg_clubelo-shaped) and `external_weight` (ADR 0006, story C-16,
+    `features/clubelo.py`) optionally shrink each club's prior toward a ClubElo-derived
+    rating rather than the survival-zone anchor alone. `external_weight` defaults to 0
+    (off): notebooks/03-prototypes/03-04-clubelo-prior-workbench.ipynb's evaluation was
+    inconclusive on a small historical sample, so this is wired but not trusted by
+    default -- see `config.py`'s `clubelo_prior_weight` for the full reasoning. A club
+    with no resolvable ClubElo rating falls back to the survival-zone anchor alone
+    regardless of `external_weight`, the same as when the feature is off."""
     completed = training.filter(pl.col("season") != season_label)
     fixture_clubs = sorted(set(fixtures["home_club_id"]) | set(fixtures["away_club_id"]))
     needing_prior = [
@@ -183,16 +196,32 @@ def _inject_promoted_club_prior(
         return training, []
 
     reference = build_survival_zone_reference(completed)
-    pseudo = [
-        prior_pseudo_matches(
-            build_prior(club, reference),
-            opponents=fixture_clubs,
-            season=season_label,
-            as_of=as_of,
-            seed=seed,
+    coefficients = (
+        fit_elo_to_rate(completed, elo_ratings, as_of=as_of)
+        if external_weight > 0 and elo_ratings is not None and elo_ratings.height
+        else {}
+    )
+    pseudo = []
+    for club in needing_prior:
+        external_rating = (
+            external_rating_for_club(club, coefficients, elo_ratings, as_of=as_of)
+            if coefficients and elo_ratings is not None
+            else None
         )
-        for club in needing_prior
-    ]
+        pseudo.append(
+            prior_pseudo_matches(
+                build_prior(
+                    club,
+                    reference,
+                    external_rating=external_rating,
+                    external_weight=external_weight if external_rating else 0.0,
+                ),
+                opponents=fixture_clubs,
+                season=season_label,
+                as_of=as_of,
+                seed=seed,
+            )
+        )
     training = pl.concat([training, *pseudo], how="vertical_relaxed").sort("date")
     log.info(
         "forecasting.promoted_club_prior",
@@ -200,8 +229,21 @@ def _inject_promoted_club_prior(
         pseudo_matches=sum(p.height for p in pseudo),
         reference_observations=reference.n_observations,
         reference_mean_points=round(reference.mean_points, 1),
+        clubelo_weight=external_weight,
     )
     return training, needing_prior
+
+
+def _clubelo_ratings(conn) -> pl.DataFrame | None:  # type: ignore[no-untyped-def]
+    """`stg_clubelo`, when it exists (a database that predates `ingest clubelo`, or
+    simply hasn't run it yet, has no such table -- `None` in that case, same tolerance
+    `_current_gameweek` has for a missing `stg_gameweeks`)."""
+    has_clubelo = conn.execute(
+        "SELECT count(*) FROM information_schema.tables WHERE table_name = 'stg_clubelo'"
+    ).fetchone()
+    if not (has_clubelo and has_clubelo[0]):
+        return None
+    return cast(pl.DataFrame, conn.execute("SELECT club_id, date, elo FROM stg_clubelo").pl())
 
 
 def fit_and_simulate(
@@ -237,6 +279,7 @@ def fit_and_simulate(
         "home_xg, away_xg, result FROM stg_matches ORDER BY date"
     ).pl()
     fpl_current_gameweek = _current_gameweek(conn)
+    elo_ratings = _clubelo_ratings(conn) if config.clubelo_prior_weight > 0 else None
     conn.close()
 
     season_label = str(fixtures["season"][0])
@@ -245,7 +288,13 @@ def fit_and_simulate(
 
     training, fpl_only_count = _assemble_training_data(history, fixtures, played, season_label)
     training, promoted_clubs = _inject_promoted_club_prior(
-        training, fixtures, season_label=season_label, as_of=as_of, seed=seed
+        training,
+        fixtures,
+        season_label=season_label,
+        as_of=as_of,
+        seed=seed,
+        elo_ratings=elo_ratings,
+        external_weight=config.clubelo_prior_weight,
     )
     log.info(
         "forecasting.training",

@@ -223,3 +223,104 @@ def test_fit_and_simulate_falls_back_to_computed_gameweek_without_stg_gameweeks(
     # Gameweeks 1-2 are seeded finished, 3+ are not: the fallback ("last gameweek
     # whose fixtures are all finished") must agree with stg_gameweeks' own answer.
     assert run.as_of_gameweek == 2
+
+
+# ---- ClubElo as the promoted-club prior's external rating (story C-16) ----
+
+
+def _seed_clubelo(config: Settings, rows: list[dict]) -> None:
+    conn = connect(config)
+    _seed(conn, "stg_clubelo", pl.DataFrame(rows))
+    conn.close()
+
+
+def _clubelo_rows(clubs: list[str], *, as_of: date, elo: float = 1700.0) -> list[dict]:
+    return [{"club_id": club, "date": as_of - timedelta(days=30), "elo": elo} for club in clubs]
+
+
+def test_clubelo_prior_weight_zero_is_unaffected_by_stg_clubelo_existing(config: Settings):
+    """The default (config.py's clubelo_prior_weight = 0.0): a database that happens
+    to have stg_clubelo populated must forecast identically to one that doesn't --
+    the whole point of shipping this feature inactive."""
+    as_of = date(2026, 9, 1)
+    _seed_curated_db(config)  # PROMOTED needs a prior
+    kwargs = dict(simulations=200, seed=7, as_of=as_of, config=config)
+
+    without_clubelo = fit_and_simulate("poisson", **kwargs)
+
+    _seed_clubelo(config, _clubelo_rows(HISTORY_CLUBS + [PROMOTED], as_of=as_of, elo=1900.0))
+    with_clubelo_present_but_weight_zero = fit_and_simulate("poisson", **kwargs)
+
+    assert (
+        without_clubelo.result.position_counts
+        == with_clubelo_present_but_weight_zero.result.position_counts
+    ).all()
+    assert without_clubelo.promoted_clubs == with_clubelo_present_but_weight_zero.promoted_clubs
+
+
+def test_clubelo_prior_weight_positive_engages_when_data_exists(tmp_path: Path):
+    """A positive clubelo_prior_weight with stg_clubelo populated must actually shift
+    the promoted club's forecast relative to weight=0 -- confirms the wiring is live,
+    not just present. HISTORY_CLUBS all share an identical scoreline in the base
+    fixture (by design, for the prior-gate tests elsewhere in this file), which leaves
+    nothing for an Elo-to-rate regression to fit against: a couple of extra,
+    deliberately lopsided matches give two clubs real rate variation, and
+    correspondingly high/low Elo, so the regression -- and PROMOTED's own predicted
+    external rating -- is well-conditioned rather than degenerate."""
+    as_of = date(2026, 9, 1)
+    off_config = Settings(data_dir=tmp_path / "data", clubelo_prior_weight=0.0)
+    on_config = Settings(data_dir=tmp_path / "data", clubelo_prior_weight=0.5)
+    _seed_curated_db(off_config)
+
+    conn = connect(off_config)
+    existing = conn.execute("SELECT * FROM stg_matches").pl()
+    lopsided = pl.DataFrame(
+        [
+            {
+                "match_id": "extra-strong",
+                "season": "2025/26",
+                "date": date(2026, 1, 1),
+                "home_club_id": "club-00",
+                "away_club_id": "club-01",
+                "home_goals": 6,
+                "away_goals": 0,
+                "result": "H",
+                "home_xg": 5.0,
+                "away_xg": 0.2,
+            },
+            {
+                "match_id": "extra-weak",
+                "season": "2025/26",
+                "date": date(2026, 1, 2),
+                "home_club_id": "club-01",
+                "away_club_id": "club-00",
+                "home_goals": 0,
+                "away_goals": 6,
+                "result": "A",
+                "home_xg": 0.2,
+                "away_xg": 5.0,
+            },
+        ],
+        schema=existing.schema,
+    )
+    _seed(conn, "stg_matches", pl.concat([existing, lopsided]))
+    conn.close()
+
+    elo_rows = _clubelo_rows(HISTORY_CLUBS, as_of=as_of, elo=1700.0)
+    for row in elo_rows:
+        if row["club_id"] == "club-00":
+            row["elo"] = 2000.0  # matches its lopsided strong record
+        elif row["club_id"] == "club-01":
+            row["elo"] = 1400.0  # matches its lopsided weak record
+    elo_rows += _clubelo_rows([PROMOTED], as_of=as_of, elo=2000.0)  # rated like club-00
+    _seed_clubelo(off_config, elo_rows)
+
+    kwargs = dict(simulations=200, seed=7, as_of=as_of)
+    off_run = fit_and_simulate("poisson", config=off_config, **kwargs)
+    on_run = fit_and_simulate("poisson", config=on_config, **kwargs)
+
+    assert on_run.promoted_clubs == off_run.promoted_clubs == [PROMOTED]
+    promoted_idx = list(off_run.result.club_ids).index(PROMOTED)
+    assert on_run.result.points[:, promoted_idx].mean() != pytest.approx(
+        off_run.result.points[:, promoted_idx].mean()
+    )

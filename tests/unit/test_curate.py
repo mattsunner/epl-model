@@ -12,6 +12,7 @@ from plforecast.storage.curate import (
     build_curate_manifest,
     build_team_match,
     curate_club_dimension,
+    curate_clubelo,
     curate_fixtures,
     curate_gameweeks,
     curate_matches,
@@ -588,6 +589,50 @@ def test_curate_gameweeks_skips_without_raising_when_no_snapshot_exists(conn):
     curate_gameweeks(conn)  # no raw_fpl_events table at all
     tables = conn.execute(
         "SELECT count(*) FROM information_schema.tables WHERE table_name = 'stg_gameweeks'"
+    ).fetchone()
+    assert tables[0] == 0
+
+
+def _seed_raw_clubelo_ratings(conn: duckdb.DuckDBPyConnection, rows: list[dict]) -> None:
+    df = pl.DataFrame(rows)
+    conn.register("_seed_clubelo", df.to_arrow())
+    conn.execute("CREATE TABLE raw_clubelo_ratings AS SELECT * FROM _seed_clubelo")
+    conn.unregister("_seed_clubelo")
+
+
+def _clubelo_row(**overrides) -> dict:
+    row = {
+        "club_id": "arsenal",
+        "date": date(2026, 9, 1),
+        "elo": 1900.0,
+        "golo": 1.4,
+        "filename": "data/raw/clubelo/20260918T031725Z/data.parquet",
+    }
+    row.update(overrides)
+    return row
+
+
+def test_curate_clubelo_materialises_stg_clubelo(conn):
+    _seed_raw_clubelo_ratings(
+        conn,
+        [
+            _clubelo_row(club_id="arsenal", date=date(2026, 9, 1), elo=1900.0),
+            _clubelo_row(club_id="coventry", date=date(2026, 9, 5), elo=1650.0, golo=None),
+        ],
+    )
+
+    curate_clubelo(conn)
+    result = conn.execute("SELECT * FROM stg_clubelo ORDER BY club_id").pl()
+
+    assert result["club_id"].to_list() == ["arsenal", "coventry"]
+    assert result["elo"].to_list() == [1900.0, 1650.0]
+    assert result.filter(pl.col("club_id") == "coventry")["golo"].item() is None
+
+
+def test_curate_clubelo_skips_without_raising_when_no_snapshot_exists(conn):
+    curate_clubelo(conn)  # no raw_clubelo_ratings table at all
+    tables = conn.execute(
+        "SELECT count(*) FROM information_schema.tables WHERE table_name = 'stg_clubelo'"
     ).fetchone()
     assert tables[0] == 0
 

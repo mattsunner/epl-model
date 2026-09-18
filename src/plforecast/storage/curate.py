@@ -617,6 +617,40 @@ def curate_gameweeks(
     log.info("curate.gameweeks", rows=validated.height, current_gameweek=current)
 
 
+class StgClubEloSchema(pa.DataFrameModel):
+    club_id: Series[str]
+    date: Series[pl.Date]
+    elo: Series[float] = pa.Field(gt=0)
+    golo: Series[float] = pa.Field(nullable=True)
+
+    class Config:
+        strict = True
+        coerce = True
+
+
+def curate_clubelo(conn: duckdb.DuckDBPyConnection, *, curated_at: datetime | None = None) -> None:
+    """ClubElo's per-club rating history (story C-16), typed from the latest snapshot.
+    Absent entirely on a clean clone or one that predates `ingest clubelo` -- skipped
+    with a warning, same tolerance `curate_gameweeks` has for a missing source. No name
+    resolution needed here: `ingest/clubelo.py` already writes canonical `club_id`
+    values (it reads them from `club_aliases.yaml` itself to build its fetch list), so
+    this is typing and validation only."""
+    if not _has_relation(conn, "raw_clubelo_ratings"):
+        log.warning("curate.clubelo_skipped_no_snapshot")
+        return
+    ratings = conn.execute(
+        f"SELECT club_id, date, elo, golo FROM ({latest_snapshot_sql('raw_clubelo_ratings')})"
+    ).pl()
+    validated = StgClubEloSchema.validate(ratings)
+    _materialize(conn, "stg_clubelo", validated, curated_at=curated_at)
+    log.info(
+        "curate.clubelo",
+        rows=validated.height,
+        clubs=validated["club_id"].n_unique(),
+        latest=str(validated["date"].max()),
+    )
+
+
 def reconcile_current_season(conn: duckdb.DuckDBPyConnection) -> dict[str, int]:
     """Cross-source check (story B-07): for the season stg_fixtures covers, every
     finished FPL fixture that football-data.co.uk has also published must carry the
@@ -670,6 +704,7 @@ _TABLE_SOURCES: dict[str, tuple[str, ...]] = {
     "stg_odds": ("raw_footballdata_matches",),
     "stg_fixtures": ("raw_fpl_fixtures", "raw_fpl_teams"),
     "stg_gameweeks": ("raw_fpl_events",),
+    "stg_clubelo": ("raw_clubelo_ratings",),
     "mart_team_match": (),  # derived from stg_matches, already curated
     "dim_club": (),  # from club_aliases.yaml, not a raw snapshot
 }
@@ -722,6 +757,7 @@ def curate_all(conn: duckdb.DuckDBPyConnection) -> dict[str, Any]:
     curate_matches(conn, dimension, curated_at=curated_at)
     curate_fixtures(conn, dimension, curated_at=curated_at)
     curate_gameweeks(conn, curated_at=curated_at)
+    curate_clubelo(conn, curated_at=curated_at)
     curate_team_match(conn, curated_at=curated_at)
     reconcile_current_season(conn)
     manifest = build_curate_manifest(conn, curated_at=curated_at)

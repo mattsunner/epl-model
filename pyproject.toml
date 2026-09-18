@@ -38,6 +38,8 @@ dev = [
     "types-pyyaml>=6.0",
     "pandas-stubs>=2.2",
     "scipy-stubs>=1.14",
+    "xgboost>=2.1",
+    "scikit-learn>=1.5",
 ]
 
 [build-system]

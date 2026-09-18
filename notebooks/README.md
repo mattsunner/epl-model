@@ -25,3 +25,11 @@ logic is genuinely new and unproven, exactly what this directory is for. It foll
 `03-01`'s section structure for direct comparison but stays, moves into
 `src/plforecast` once proven out, or gets deleted -- it does not get the standing-
 exception status `03-01` has.
+
+`03-prototypes/03-03-ml-rates-workbench.ipynb` is the same kind of standard prototype:
+an XGBoost rate estimator (plus a cheaper residual-correction variant on top of
+`XGRateModel`) using ClubElo, decayed goal/xG rates, and `mart_team_match.rest_days`
+as features. Neither variant beat `XGRateModel` in its first pass -- kept as a
+prototype for that reason, not promoted. Needs `xgboost`/`scikit-learn` (dev
+dependencies) and, on macOS, the `libomp` Homebrew package for XGBoost's native
+library.

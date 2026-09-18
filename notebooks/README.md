@@ -33,3 +33,12 @@ as features. Neither variant beat `XGRateModel` in its first pass -- kept as a
 prototype for that reason, not promoted. Needs `xgboost`/`scikit-learn` (dev
 dependencies) and, on macOS, the `libomp` Homebrew package for XGBoost's native
 library.
+
+`03-prototypes/03-04-clubelo-prior-workbench.ipynb` prototypes the narrower use case
+ADR 0006 actually designed: ClubElo as `features/priors.py.build_prior()`'s
+`external_rating` input, not a competing model. It also builds a dedicated evaluation
+harness for the promoted-club prior itself, since `evaluate/backtest.py`'s
+walk-forward harness never exercises it (`docs/model-card.md`'s own documented gap).
+First-pass result on a small historical sample: no clear RPS improvement, but a
+material shift in this season's live forecast for at least one promoted club (Hull
+City). Reuses `03-02`'s cached ClubElo data.

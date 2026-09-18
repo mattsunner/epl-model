@@ -18,3 +18,10 @@ section 10.2) for tweaking the forecasting model's levers and visualizing the re
 meant to be revisited repeatedly rather than deleted once it reaches a conclusion. It
 still obeys the "consume, never define logic" rule: every chart it renders comes from
 `src/plforecast/viz.py`.
+
+`03-prototypes/03-02-clubelo-workbench.ipynb` is a standard prototype, not another
+exception: it defines a `ClubEloModel` and a ClubElo data fetcher inline because that
+logic is genuinely new and unproven, exactly what this directory is for. It follows
+`03-01`'s section structure for direct comparison but stays, moves into
+`src/plforecast` once proven out, or gets deleted -- it does not get the standing-
+exception status `03-01` has.

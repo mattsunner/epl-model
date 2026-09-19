@@ -261,6 +261,7 @@ class Source(Protocol):
 
 Requirements on every adapter:
 
+- **`since` is now live** (story: weekly scheduled pipeline, 19 September 2026): `cli.py`'s `ingest --current-season-only` threads a non-`None` `since` through to whichever adapters can use it (football-data, understat narrow to the current season only; fpl and clubelo ignore it, having no backfill-vs-current split). **This means a landed snapshot is no longer guaranteed to be a complete dataset** -- a real, latent assumption break this surfaced: `curate_matches`, `_understat_xg`, and `curate_club_season_membership` all used to read only the single most recently landed snapshot, which was safe only because every ingest was a full backfill until this changed. Any future code reading a `raw_*` view must read every landed snapshot and dedupe to the most recently landed row per natural key (`curate_matches`'s own pattern), never assume "latest snapshot" means "everything."
 - **Immutability**: the parsed frame is written to `data/raw/{source}/{fetched_at}/` and never overwritten. Re-runs create new snapshots.
 - **Provenance**: every raw file carries a sidecar `_meta.json` with source URL, HTTP status, fetch timestamp, row count, and a content hash.
 - **Politeness**: a configured minimum inter-request delay. Understat and Transfermarkt are scraped, not API-served, and ToS applies.
@@ -551,7 +552,7 @@ Given a local-only pipeline and a public repo intended to support writing, publi
 
 - **S3 plus build-time fetch.** Provisioning a bucket and an IAM role to serve a file GitHub already serves publicly is infrastructure for no gain, and it reintroduces a build-time network dependency.
 - **Git submodule.** Pins the site to SHA bumps, complicates CI checkout, and delivers nothing the fetch does not.
-- **`repository_dispatch` from the forecast repo.** Would give immediacy, but needs a fine-grained PAT or GitHub App with write access to the site repo. Since the pipeline is run manually, the operator is already at the keyboard and can trigger the site workflow in the same sitting. Not worth the cross-repo credential. Revisit only if the pipeline moves to scheduled execution.
+- **`repository_dispatch` from the forecast repo.** Would give immediacy, but needs a fine-grained PAT or GitHub App with write access to the site repo. Since the pipeline is run manually, the operator is already at the keyboard and can trigger the site workflow in the same sitting. Not worth the cross-repo credential. **The pipeline moved to scheduled execution 19 September 2026** (`.github/workflows/weekly-refresh.yml`), so this option's calculus has changed -- see `docs/adr/0005-frontend-static-publishing.md`'s consequences section. Not implemented as part of that change; still a possible follow-up, not a v1 commitment.
 
 **Side benefit**: the site repo's git history becomes a second, independent record of what was published and when.
 
@@ -574,7 +575,12 @@ Separate concern, separate tool, not deployed.
 
 ### 10.3 Deferred
 
-An interactive app becomes worth revisiting only if the pipeline moves to scheduled execution (homelab K3s CronJob or a GitHub Actions workflow) and there is a real query surface such as fixture-level what-ifs. Recorded as an open question, not a v1 commitment.
+**The pipeline moved to scheduled execution 19 September 2026** (story: weekly
+scheduled pipeline; `.github/workflows/weekly-refresh.yml`, a GitHub Actions
+workflow, not a homelab K3s CronJob). An interactive app is still deferred -- that
+half of this section's original condition is now true, but there is still no real
+query surface (fixture-level what-ifs) to justify one. Recorded as an open question,
+not a v1 commitment.
 
 ---
 

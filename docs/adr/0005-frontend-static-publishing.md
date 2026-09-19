@@ -50,4 +50,13 @@ applies.
 - Immediacy is bounded by the weekly schedule or a manual dispatch; the operator is at
   the keyboard when the pipeline runs and can trigger the site workflow in the same
   sitting.
-- Revisit only if the pipeline moves to scheduled execution.
+- **This is now true (19 September 2026, story: weekly scheduled pipeline):**
+  `.github/workflows/weekly-refresh.yml` runs the forecast pipeline itself on a
+  schedule, unattended -- nobody is necessarily at the keyboard when a new
+  `forecast-latest.json` lands. The site's own weekly-schedule pull still works (it
+  just polls less promptly than a push would), but a `repository_dispatch` from this
+  repo to the site repo is now a reasonable option where it wasn't before: there's a
+  well-defined moment (the commit-back step at the end of the workflow) to fire it
+  from, rather than needing a cross-repo credential for a pipeline that was run by
+  hand anyway. Not part of this change -- revisit if the weekly-schedule pull proves
+  too slow in practice.

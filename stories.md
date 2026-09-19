@@ -945,6 +945,41 @@ materialised and are not recorded there: the benchmark price source disappeared 
 
 Acceptance criteria: both added with their mitigations; the table gains a "status" column.
 
+### C-18 · P2 · New · Scheduled weekly pipeline execution
+
+**Status**: Done 19 Sep 2026: `.github/workflows/weekly-refresh.yml` runs ingest ->
+curate -> forecast -> commit on a schedule (Tuesday 06:00 UTC) plus `workflow_dispatch`.
+`data/` persisted across runs via `actions/cache` (a performance cache, not a source of
+truth -- `artifacts/` already is that, and it's committed) rather than any new cloud
+storage or database, consistent with ADR 0002's and ADR 0005's own reasoning against
+new infrastructure for a problem GitHub already solves for free. `cli.py ingest
+--current-season-only` (threaded to `Source.fetch(since=...)`, already built on every
+adapter but never actually called with a value before this) is the real lever that
+makes a weekly run fast and light on Understat/ClubElo's scraped sources -- a warm
+cache alone would not, since `cache_ttl_hours` defaults to 24 and a weekly cadence
+finds every cached file "stale" regardless.
+
+Building this surfaced two real, previously-latent bugs, both from the same wrong
+assumption that a raw snapshot is always a complete dataset: `curate_matches`,
+`_understat_xg`, and `curate_club_season_membership` all read only the single most
+recently landed snapshot (safe only when every ingest was a full backfill), and
+`prune_snapshots` pruned every source purely by recency with no awareness that an
+old football-data/understat snapshot might be the only remaining copy of a finished
+season. Both fixed (`storage/curate.py` now merges across every landed snapshot;
+`prune_snapshots`/`cli.py prune-raw` gained a `sources` filter so the scheduled
+workflow only prunes full-refetch sources, never football-data/understat).
+
+Evidence: the site's own publishing design (ADR 0005) already anticipated this --
+"revisit only if the pipeline moves to scheduled execution" -- and was the stated
+prerequisite for showing weekly forecast history or fixture-level predictions on
+`models.mattsunner.com`, neither of which the pipeline could support running by hand
+alone.
+
+Acceptance criteria: a scheduled workflow exists and was verified end to end locally
+(`just weekly-refresh`) and the curated tables retain full historical coverage after an
+incremental run; ADR 0005 and design.md updated to reflect the pipeline no longer being
+manual-only.
+
 ---
 
 ## Index by priority
@@ -953,5 +988,5 @@ Acceptance criteria: both added with their mitigations; the table gains a "statu
 | --- | --- |
 | P0 | A-01, A-02, A-03, B-01, B-02, C-01, C-02 |
 | P1 | A-04, A-05, A-06, A-07, A-08, A-09, A-10, B-03, B-04, B-05, B-06, B-07, B-08, B-09, C-03, C-04, C-05, C-11, C-15 |
-| P2 | A-11 to A-18, A-20, A-21, B-10 to B-15, B-18, B-19, C-06 to C-09, C-12, C-16, C-17 |
+| P2 | A-11 to A-18, A-20, A-21, B-10 to B-15, B-18, B-19, C-06 to C-09, C-12, C-16, C-17, C-18 |
 | P3 | A-19, B-16, B-17, C-10, C-13, C-14 |

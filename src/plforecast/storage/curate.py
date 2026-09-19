@@ -284,16 +284,26 @@ def _has_relation(conn: duckdb.DuckDBPyConnection, name: str) -> bool:
 
 
 def _understat_xg(conn: duckdb.DuckDBPyConnection, dimension: ClubDimension) -> pl.DataFrame | None:
-    """Latest Understat snapshot with club IDs resolved, keyed like stg_matches.
-    None when Understat has not been ingested (a clean clone mid-bootstrap)."""
+    """Every landed Understat snapshot, deduped to the most recently landed row per
+    (season, home, away), with club IDs resolved, keyed like stg_matches. None when
+    Understat has not been ingested (a clean clone mid-bootstrap). Reads every
+    snapshot rather than just the latest for the same reason `curate_matches` does
+    (story: weekly scheduled pipeline's `--current-season-only` ingest can land a
+    partial, current-season-only snapshot)."""
     if not _has_relation(conn, "raw_understat_team_match"):
         log.warning("curate.xg_skipped_no_understat_snapshot")
         return None
-    raw = conn.execute(
-        "SELECT season, date, home_team, away_team, home_goals, away_goals, home_xg, "
-        "away_xg, home_np_xg, away_np_xg "
-        f"FROM ({latest_snapshot_sql('raw_understat_team_match')})"
-    ).pl()
+    raw = (
+        conn.execute(
+            "SELECT season, date, home_team, away_team, home_goals, away_goals, home_xg, "
+            "away_xg, home_np_xg, away_np_xg, filename "
+            "FROM raw_understat_team_match"
+        )
+        .pl()
+        .sort("filename", descending=True)
+        .unique(subset=["season", "home_team", "away_team"], keep="first", maintain_order=True)
+        .drop("filename")
+    )
     return raw.with_columns(
         pl.Series("home_club_id", dimension.resolve(raw["home_team"].to_list(), "understat")),
         pl.Series("away_club_id", dimension.resolve(raw["away_team"].to_list(), "understat")),
@@ -432,10 +442,14 @@ def curate_team_match(
 def curate_club_season_membership(
     conn: duckdb.DuckDBPyConnection, *, curated_at: datetime | None = None
 ) -> None:
-    matches = conn.execute(
-        "SELECT season, home_team, away_team FROM "
-        f"({latest_snapshot_sql('raw_footballdata_matches')})"
-    ).pl()
+    """Reads every landed football-data snapshot, not just the latest -- a
+    `--current-season-only` snapshot (story: weekly scheduled pipeline) only carries
+    the current season, so membership for every other season would otherwise vanish
+    the first time an incremental ingest lands. Existence-only (which club played in
+    which season), so no per-natural-key "most recent wins" dedup is needed the way
+    `curate_matches` needs for conflicting field values -- `build_club_season_
+    membership` already dedupes to unique (club, season) pairs."""
+    matches = conn.execute("SELECT season, home_team, away_team FROM raw_footballdata_matches").pl()
     dimension = load_club_dimension()
     membership = build_club_season_membership(matches, dimension)
 
@@ -450,9 +464,12 @@ def curate_matches(
     curated_at: datetime | None = None,
 ) -> None:
     """One row per (season, home team, away team) -- the natural key for a football-data
-    row, since each pairing plays at a given ground exactly once a season. Starts from
-    the latest snapshot, then keeps the most recently landed row per natural key as a
-    second guard, so the table is one row per match however many snapshots exist."""
+    row, since each pairing plays at a given ground exactly once a season. Reads every
+    landed snapshot, not just the latest, then keeps the most recently landed row per
+    natural key -- required since story: weekly scheduled pipeline's
+    `--current-season-only` ingest, a snapshot can now be a *partial* one (this
+    season only), so "the latest snapshot" alone is no longer a complete dataset the
+    way it always was when every ingest was a full backfill."""
     dimension = dimension or load_club_dimension()
     odds_cols = ", ".join(c for cols in _bookmaker_columns().values() for c in cols)
     # The natural-key dedupe runs in Polars, not as a SQL window: DuckDB 1.5 returns nulls
@@ -461,7 +478,7 @@ def curate_matches(
     deduped = (
         conn.execute(
             f"SELECT season, date, home_team, away_team, fthg, ftag, ftr, {odds_cols}, filename "
-            f"FROM ({latest_snapshot_sql('raw_footballdata_matches')})"
+            "FROM raw_footballdata_matches"
         )
         .pl()
         .sort("filename", descending=True)

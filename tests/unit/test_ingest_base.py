@@ -272,3 +272,22 @@ def test_prune_snapshots_handles_multiple_sources_independently(tmp_path: Path):
 
 def test_prune_snapshots_on_a_missing_raw_dir_is_a_noop(tmp_path: Path):
     assert prune_snapshots(tmp_path / "does-not-exist", keep=4) == {}
+
+
+def test_prune_snapshots_sources_filter_leaves_other_sources_untouched(tmp_path: Path):
+    """The safety requirement for a source that can land a partial snapshot (story:
+    weekly scheduled pipeline's --current-season-only): passing `sources` must prune
+    only the named sources, not everything with more than `keep`."""
+    for stamp in ("20260101T000000Z", "20260102T000000Z", "20260103T000000Z"):
+        _land(tmp_path, "football-data", stamp)
+        _land(tmp_path, "clubelo", stamp)
+
+    removed = prune_snapshots(tmp_path, keep=1, sources=["clubelo"])
+
+    assert set(removed) == {"clubelo"}
+    assert _snapshot_names(tmp_path, "football-data") == {
+        "20260101T000000Z",
+        "20260102T000000Z",
+        "20260103T000000Z",
+    }
+    assert _snapshot_names(tmp_path, "clubelo") == {"20260103T000000Z"}

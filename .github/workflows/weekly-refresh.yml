@@ -1,0 +1,98 @@
+name: weekly-refresh
+
+# Ingest -> curate -> forecast -> commit, on a schedule (story: weekly scheduled
+# pipeline). data/ (raw snapshots, the DuckDB file) is a performance cache, not a
+# source of truth -- artifacts/ already is that, and it's committed -- so it's
+# persisted with actions/cache rather than any new infrastructure. Historical seasons
+# are narrowed out of every run via --current-season-only (ingest/*.py), which is the
+# actual thing that keeps a run fast and light on Understat/ClubElo's scraped sources;
+# the cache alone would not, since cache_ttl_hours defaults to 24 and every cached file
+# would look "stale" on a weekly cadence regardless.
+
+on:
+  schedule:
+    # Tuesday 06:00 UTC: after the weekend's and any Monday-night fixtures are final,
+    # before most people are checking. Change the cron line to move it.
+    - cron: "0 6 * * 2"
+  workflow_dispatch: {}
+
+concurrency:
+  group: weekly-refresh
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      # Ever-growing cache keyed by run: every run saves a new entry (key is always
+      # unique), restore-keys always falls back to the most recent one. Self-healing --
+      # a cache miss (first run ever, or after GitHub evicts an old entry) just means
+      # one slower run that does a full backfill and re-seeds the cache for every run
+      # after it, rather than a hard failure.
+      - name: Restore data cache
+        uses: actions/cache@v4
+        with:
+          path: data
+          key: pipeline-data-${{ github.run_id }}
+          restore-keys: |
+            pipeline-data-
+
+      - name: Sync (frozen lock file)
+        run: uv sync --frozen
+
+      - name: Ingest football-data (current season only)
+        run: uv run plforecast ingest football-data --current-season-only
+
+      - name: Ingest understat (current season only)
+        run: uv run plforecast ingest understat --current-season-only
+
+      - name: Ingest fpl
+        run: uv run plforecast ingest fpl
+
+      - name: Ingest clubelo
+        run: uv run plforecast ingest clubelo
+
+      - name: Curate
+        run: uv run plforecast curate
+
+      - name: Forecast
+        run: uv run plforecast forecast
+
+      - name: Prune old raw snapshots (full-refetch sources only)
+        # write_snapshot() never overwrites, so data/raw/ grows one snapshot per
+        # source per run forever without this -- keeps the cached directory bounded
+        # across dozens of weekly runs (story B-17). football-data/understat are
+        # deliberately excluded: --current-season-only above lands a *partial*
+        # snapshot for them, so an older snapshot can be the only remaining copy of a
+        # finished season's data. Pruning it would make the next curate run silently
+        # rebuild stg_matches/mart_team_match with that history missing. fpl/clubelo
+        # always land a complete dataset regardless, so pruning them is unconditionally
+        # safe.
+        run: >
+          uv run plforecast prune-raw --keep 4
+          --source fpl-teams --source fpl-players --source fpl-fixtures --source fpl-events
+          --source clubelo
+
+      - name: Validate committed forecast artifacts
+        run: uv run plforecast validate-artifacts
+
+      - name: Commit and push if artifacts changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if git status --porcelain artifacts/ | grep -q .; then
+            git add artifacts/
+            git commit -m "Weekly forecast refresh: $(date -u +%Y-%m-%d)"
+            git push
+          else
+            echo "no change to artifacts/, nothing to commit"
+          fi

@@ -395,21 +395,35 @@ def prune_raw(
     keep: Annotated[
         int, typer.Option(help="Snapshots to keep per source; the latest is always kept.")
     ] = 4,
+    source: Annotated[
+        list[str] | None,
+        typer.Option(
+            help="Restrict pruning to these source directory names (repeatable). "
+            "Omit to prune every source -- safe only for sources whose ingest always "
+            "lands a complete dataset (fpl, clubelo). football-data and understat can "
+            "land a partial, current-season-only snapshot (story: weekly scheduled "
+            "pipeline); an old snapshot there may be the only copy of a finished "
+            "season's data, so pruning them requires passing --source explicitly."
+        ),
+    ] = None,
 ) -> None:
     """Delete all but the `keep` most recent raw snapshots per source (story B-17).
-    Every ingest run lands a full snapshot and every raw_* view unions all of them, so
-    retained snapshot count is the only thing keeping view-scan cost from growing
-    without bound on a long-running install; curate's own natural-key dedupe makes old
-    snapshots redundant once a newer one exists."""
+    A full-refetch source (fpl, clubelo) always lands a complete dataset, so old
+    snapshots there are pure redundancy once a newer one exists -- safe to prune
+    without restriction. football-data and understat are not: an incremental
+    (`--current-season-only`) ingest lands a partial snapshot, so an older snapshot
+    can be the only remaining copy of a finished season -- prune those only with
+    `--source` naming them explicitly, once you're sure a full-backfill snapshot is
+    not about to be the one that gets removed."""
     from plforecast.config import settings
     from plforecast.ingest.base import prune_snapshots
 
-    removed = prune_snapshots(settings.raw_dir, keep=keep)
+    removed = prune_snapshots(settings.raw_dir, keep=keep, sources=source)
     if not removed:
         typer.echo(f"nothing to prune (every source has {keep} or fewer snapshots)")
         return
-    for source, paths in removed.items():
-        typer.echo(f"{source}: removed {len(paths)} snapshot(s)")
+    for source_name, paths in removed.items():
+        typer.echo(f"{source_name}: removed {len(paths)} snapshot(s)")
 
 
 @app.command()

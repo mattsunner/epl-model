@@ -15,6 +15,7 @@ import hashlib
 import json
 import shutil
 import time
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
 from pathlib import Path
@@ -127,7 +128,9 @@ def content_hash(df: pl.DataFrame) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
-def prune_snapshots(raw_dir: Path, *, keep: int) -> dict[str, list[Path]]:
+def prune_snapshots(
+    raw_dir: Path, *, keep: int, sources: Iterable[str] | None = None
+) -> dict[str, list[Path]]:
     """Delete all but the `keep` most recent snapshot directories under each source
     directory in `raw_dir` (story B-17). Snapshot directories sort lexicographically by
     their UTC timestamp name, so the last `keep` after a plain sort are the newest; the
@@ -135,12 +138,28 @@ def prune_snapshots(raw_dir: Path, *, keep: int) -> dict[str, list[Path]]:
     view must resolve to at least one snapshot (`storage.db.ensure_raw_views` drops a
     view entirely once its source has none). Returns source name -> the paths removed,
     so a caller can log or report what was pruned; removes nothing and returns an empty
-    mapping for a source directory that does not exist."""
+    mapping for a source directory that does not exist.
+
+    `sources`, when given, restricts pruning to just those source directory names
+    (every other source is left untouched regardless of how many snapshots it has).
+    **This is not just a filter, it's a safety requirement** for a source whose ingest
+    can land a *partial* snapshot (story: weekly scheduled pipeline's
+    `--current-season-only`, football-data and understat): older snapshots there are
+    not simply redundant copies the way a full-refetch source's (fpl, clubelo) are --
+    an old snapshot may be the only place a finished season's data still exists.
+    Pruning one prematurely means the next curate run silently rebuilds its curated
+    table with that history missing, since curate always reads from whatever raw
+    snapshots currently exist. Callers must pass `sources` explicitly for anything
+    that can produce a partial snapshot; `None` (prune everything) is only safe for
+    sources that always land a complete dataset."""
     keep = max(keep, 1)
     removed: dict[str, list[Path]] = {}
     if not raw_dir.exists():
         return removed
+    source_filter = set(sources) if sources is not None else None
     for source_dir in sorted(p for p in raw_dir.iterdir() if p.is_dir()):
+        if source_filter is not None and source_dir.name not in source_filter:
+            continue
         snapshots = sorted(p for p in source_dir.iterdir() if (p / "data.parquet").exists())
         stale = snapshots[:-keep] if keep < len(snapshots) else []
         if stale:

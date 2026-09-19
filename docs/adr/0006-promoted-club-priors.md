@@ -2,12 +2,15 @@
 
 **Status**: accepted 14 September 2026; implementation path revised 16 September 2026;
 option 2 (ClubElo) built 18 September 2026 (`ingest/clubelo.py`, `features/clubelo.py`)
-but shipped inactive -- `config.clubelo_prior_weight` defaults to `0`. The one
-evaluation run behind it (`notebooks/03-prototypes/03-04-clubelo-prior-workbench
-.ipynb`) was inconclusive on 18 historical debut-era matches (RPS differences across a
-full weight sweep stayed within noise for that sample size), even though the live
-forecast shifted materially for at least one promoted club. Revisit the default once
-there is more evidence than that.
+and activated 19 September 2026 (`config.clubelo_prior_weight = 0.5`). The one
+dedicated evaluation run behind it
+(`notebooks/03-prototypes/03-04-clubelo-prior-workbench.ipynb`) was inconclusive on 18
+historical debut-era matches (RPS differences across a full weight sweep stayed within
+noise for that sample size). Activated anyway, on live-forecast evidence instead: the
+promoted-club prior shifted materially and plausibly for the clubs it applies to (Hull
+City moved from 46.0 to 39.5 expected points and 15.9% to 48.5% relegation probability).
+This is a judgment call under genuine uncertainty, recorded as such -- revisit the
+weight, including back toward 0, if a wider evaluation contradicts the live shift.
 
 ## Context
 
@@ -36,9 +39,9 @@ Sunderland near-certain relegation.
 - Option 3 (`features/priors.py`) is the anchor every prior uses: the survival-zone
   reference, reporting mean points alongside as a cross-check against the 22-season
   figure of 33.8 points for 18th place. Option 2 (ClubElo, `features/clubelo.py`,
-  `ingest/clubelo.py`) is built and wired through `build_prior()`'s `external_rating`/
-  `external_weight` (story C-16), but `config.clubelo_prior_weight` defaults to `0` --
-  see the status line above for why.
+  `ingest/clubelo.py`) is built, wired through `build_prior()`'s `external_rating`/
+  `external_weight`, and active (`config.clubelo_prior_weight = 0.5`, story C-16) --
+  see the status line above for the reasoning and its caveats.
 - **Promoted clubs are not interchangeable.** `needs_prior` is the gate, and it counts
   evidence the way the models weight it: each past match counts `exp(-xi * days)`. A
   club with a recent top-flight season (Ipswich, 2024/25) keeps its data and is shrunk

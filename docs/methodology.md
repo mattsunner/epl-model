@@ -177,13 +177,15 @@ time, refit at every call site rather than cached (no lookahead bias). Applying 
 fit to a promoted club's own current Elo -- available even with zero top-flight
 history, since ClubElo covers the Championship -- gives `build_prior()`'s
 `external_rating`; `config.clubelo_prior_weight` is `build_prior()`'s own
-`external_weight`, in `[0, 1]`. Defaults to `0` (the survival-zone anchor alone,
-unshrunk): the only evaluation run so far
+`external_weight`, in `[0, 1]`, defaulting to `0.5` (active since 19 September 2026).
+The only dedicated evaluation run so far
 (`notebooks/03-prototypes/03-04-clubelo-prior-workbench.ipynb`) reconstructed every
 historical promoted-club-like debut ClubElo's cached history could reach and found no
-clear RPS improvement on that small sample, even though the live forecast shifted
-materially for at least one promoted club. A club with no resolvable ClubElo rating
-falls back to the anchor alone regardless of the weight setting.
+clear RPS improvement on that small (18-match) sample -- the weight was activated on
+live-forecast evidence instead (a large, plausible shift for the promoted clubs it
+applies to), a judgment call under genuine uncertainty, not a claim the historical
+result was resolved. A club with no resolvable ClubElo rating falls back to the anchor
+alone regardless of the weight setting.
 
 ## 5. Simulation
 

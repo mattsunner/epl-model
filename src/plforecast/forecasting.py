@@ -180,13 +180,11 @@ def _inject_promoted_club_prior(
     unchanged) training frame and the list of clubs the prior covered.
 
     `elo_ratings` (stg_clubelo-shaped) and `external_weight` (ADR 0006, story C-16,
-    `features/clubelo.py`) optionally shrink each club's prior toward a ClubElo-derived
-    rating rather than the survival-zone anchor alone. `external_weight` defaults to 0
-    (off): notebooks/03-prototypes/03-04-clubelo-prior-workbench.ipynb's evaluation was
-    inconclusive on a small historical sample, so this is wired but not trusted by
-    default -- see `config.py`'s `clubelo_prior_weight` for the full reasoning. A club
-    with no resolvable ClubElo rating falls back to the survival-zone anchor alone
-    regardless of `external_weight`, the same as when the feature is off."""
+    `features/clubelo.py`) shrink each club's prior toward a ClubElo-derived rating
+    rather than the survival-zone anchor alone -- see `config.py`'s
+    `clubelo_prior_weight` for the activation decision and its reasoning. A club with
+    no resolvable ClubElo rating falls back to the survival-zone anchor alone
+    regardless of `external_weight`, the same as when the weight is 0."""
     completed = training.filter(pl.col("season") != season_label)
     fixture_clubs = sorted(set(fixtures["home_club_id"]) | set(fixtures["away_club_id"]))
     needing_prior = [

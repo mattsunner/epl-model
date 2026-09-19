@@ -238,10 +238,12 @@ def _clubelo_rows(clubs: list[str], *, as_of: date, elo: float = 1700.0) -> list
     return [{"club_id": club, "date": as_of - timedelta(days=30), "elo": elo} for club in clubs]
 
 
-def test_clubelo_prior_weight_zero_is_unaffected_by_stg_clubelo_existing(config: Settings):
-    """The default (config.py's clubelo_prior_weight = 0.0): a database that happens
-    to have stg_clubelo populated must forecast identically to one that doesn't --
-    the whole point of shipping this feature inactive."""
+def test_clubelo_prior_weight_zero_is_unaffected_by_stg_clubelo_existing(tmp_path: Path):
+    """clubelo_prior_weight=0 (explicit -- decoupled from whatever config.py's own
+    shipped default happens to be): a database that happens to have stg_clubelo
+    populated must forecast identically to one that doesn't, so weight=0 is a genuine
+    off switch, not just "off until someone ingests ClubElo"."""
+    config = Settings(data_dir=tmp_path / "data", clubelo_prior_weight=0.0)
     as_of = date(2026, 9, 1)
     _seed_curated_db(config)  # PROMOTED needs a prior
     kwargs = dict(simulations=200, seed=7, as_of=as_of, config=config)

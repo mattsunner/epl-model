@@ -55,14 +55,17 @@ class Settings(BaseSettings):
     xg_rates_rho: float = 0.0  # grid flat within 0.0004 RPS; parsimony rule keeps it off
 
     # ClubElo as the promoted-club prior's external_rating (ADR 0006, story C-16),
-    # in [0, 1] -- build_prior()'s own shrinkage weight. Defaults to 0 (off): the
-    # only evaluation run so far (notebooks/03-prototypes/03-04-clubelo-prior-
-    # workbench.ipynb) was inconclusive on 18 historical debut-era matches -- RPS
-    # differences across the whole 0-1 weight sweep stayed within noise for that
-    # sample size, even though the live forecast shifted materially for one club.
-    # Wired and available (features/clubelo.py, forecasting._inject_promoted_club
-    # _prior), not shipped active, pending more evaluation evidence than that.
-    clubelo_prior_weight: float = 0.0
+    # in [0, 1] -- build_prior()'s own shrinkage weight. Activated 19 September 2026
+    # at 0.5 (features/clubelo.py, forecasting._inject_promoted_club_prior). The one
+    # evaluation run behind this (notebooks/03-prototypes/03-04-clubelo-prior-
+    # workbench.ipynb) was inconclusive on RPS across an 18-match historical sample
+    # -- differences across the whole 0-1 weight sweep stayed within noise for that
+    # sample size -- but the live forecast shifted materially and plausibly for the
+    # promoted clubs it applies to (Hull City, Coventry City), and that live-forecast
+    # evidence was judged sufficient to activate. A club with no resolvable ClubElo
+    # rating still falls back to the survival-zone anchor alone, unaffected by this
+    # value. Revisit toward 0 if a wider evaluation contradicts the live shift.
+    clubelo_prior_weight: float = 0.5
 
     @property
     def raw_dir(self) -> Path:

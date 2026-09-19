@@ -161,11 +161,13 @@ ingestion contract every adapter implements.
   gap costs nothing real.
 - **Access**: no auth, no published rate limit; the adapter applies the same politeness
   delay and TTL cache as football-data and FPL.
-- **Shipped inactive**: `config.clubelo_prior_weight` defaults to `0`. The only
-  evaluation run so far (`notebooks/03-prototypes/03-04-clubelo-prior-workbench.ipynb`)
-  was inconclusive on 18 historical debut-era matches -- RPS differences across a full
-  weight sweep from 0 to 1 stayed within noise for that sample size, even though the
-  live forecast shifted materially for at least one promoted club. See `docs/adr/0006-promoted-club-priors.md`.
+- **Active since 19 September 2026**: `config.clubelo_prior_weight` defaults to `0.5`.
+  The one evaluation run behind it (`notebooks/03-prototypes/03-04-clubelo-prior-
+  workbench.ipynb`) was inconclusive on RPS across an 18-match historical sample --
+  differences across a full weight sweep from 0 to 1 stayed within noise for that
+  sample size -- but the live forecast shifted materially and plausibly for the
+  promoted clubs it applies to, and that live-forecast evidence was judged sufficient
+  to activate. See `docs/adr/0006-promoted-club-priors.md`.
 
 ## Transfermarkt
 

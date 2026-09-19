@@ -224,7 +224,7 @@ Detailed inventory lives in `docs/data-sources.md`. Summary of what each source 
 | football-data.co.uk | Match results and closing odds, E0 and E1, 1993 onward | Weekly | Built |
 | Understat | Team and shot-level xG, 2014/15 onward | Weekly | Built (team-level) |
 | FPL API | Fixture list, kickoff times, player availability and suspensions | Weekly | Built |
-| ClubElo | Independent strength prior for the promoted-club prior | Weekly | Built (story C-16), shipped inactive |
+| ClubElo | Independent strength prior for the promoted-club prior | Weekly | Built and active (story C-16) |
 | Transfermarkt | Squad market value, promoted-club prior, injury history | Per transfer window | Deferred to v2 (story C-16) |
 
 FBref is explicitly excluded as a live source. Its Opta-derived advanced stats were removed in January 2026 and no longer update.
@@ -236,10 +236,12 @@ the *decided* promoted-club prior design (design.md section 6.3, decision 2 in s
 14) that had no adapter yet. **Not a single CSV endpoint as originally assumed here**:
 that classic API (`api.clubelo.com`) is gone; see `docs/data-sources.md`'s ClubElo
 section for what the adapter actually does against the redesigned site, including two
-real coverage gaps (history from ~2022/23 only, 32 of 35 clubs resolved). Wired but
-shipped inactive (`config.clubelo_prior_weight = 0`) pending more evaluation evidence
-than the one small-sample run behind it so far
-(`notebooks/03-prototypes/03-04-clubelo-prior-workbench.ipynb`). Transfermarkt adds a
+real coverage gaps (history from ~2022/23 only, 32 of 35 clubs resolved). Active since
+19 September 2026 (`config.clubelo_prior_weight = 0.5`) on live-forecast evidence, even
+though the one dedicated evaluation run behind it
+(`notebooks/03-prototypes/03-04-clubelo-prior-workbench.ipynb`) was inconclusive on a
+small historical sample -- see `docs/adr/0006-promoted-club-priors.md` for the full
+reasoning. Transfermarkt adds a
 third club-naming scheme to maintain and is scraped (ToS-sensitive) for a signal
 (squad market value) the prior does not strictly need: ClubElo's own rating already
 blends recent form and squad quality. Revisit Transfermarkt if ClubElo alone proves

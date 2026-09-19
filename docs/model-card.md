@@ -86,11 +86,15 @@ draws specifically).
   (`notebooks/03-prototypes/03-04-clubelo-prior-workbench.ipynb`, story C-16): it
   reconstructed every historical promoted-club-like debut in ClubElo's coverage
   window and found no clear RPS improvement from shrinking the prior toward a
-  ClubElo-derived rating, on only 18 matches -- suggestive, not conclusive. That
-  mechanism (`config.clubelo_prior_weight`) is built and available but shipped
-  inactive (defaults to `0`) for exactly this reason. The main walk-forward harness
-  itself still does not exercise the prior at all; this is a real gap, not a claim
-  that any version of the prior helps or hurts.
+  ClubElo-derived rating, on only 18 matches -- suggestive, not conclusive.
+  **`config.clubelo_prior_weight` was nonetheless activated (0.5, 19 September 2026)**
+  on the strength of the live-forecast evidence instead: shrinking toward ClubElo
+  moved Hull City from 46.0 to 39.5 expected points and its relegation probability from
+  15.9% to 48.5%, a large, directionally plausible shift for the club that gap concerns
+  it most. Read that as a judgment call under genuine uncertainty, not as evidence the
+  historical inconclusiveness was resolved. The main walk-forward harness itself still
+  does not exercise the prior at all; this is a real gap, not a claim that this
+  specific weight is the right one.
 
 ## Known failure mode: promoted clubs, and how it was found
 

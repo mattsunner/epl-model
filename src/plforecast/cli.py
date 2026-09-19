@@ -21,24 +21,34 @@ def main() -> None:
 
 
 @app.command()
-def ingest(source: str) -> None:
+def ingest(
+    source: str,
+    current_season_only: Annotated[
+        bool,
+        typer.Option(
+            help="Skip finished, immutable seasons and only re-fetch the current "
+            "one (story: weekly scheduled pipeline). football-data/understat only; "
+            "fpl and clubelo ignore this, they have no backfill-vs-current split."
+        ),
+    ] = False,
+) -> None:
     """Fetch and land a raw snapshot from one source."""
     if source == "football-data":
         from plforecast.ingest.footballdata import ingest as ingest_footballdata
 
-        ingest_footballdata()
+        ingest_footballdata(current_season_only=current_season_only)
     elif source == "fpl":
         from plforecast.ingest.fpl import ingest as ingest_fpl
 
-        ingest_fpl()
+        ingest_fpl(current_season_only=current_season_only)
     elif source == "understat":
         from plforecast.ingest.understat import ingest as ingest_understat
 
-        ingest_understat()
+        ingest_understat(current_season_only=current_season_only)
     elif source == "clubelo":
         from plforecast.ingest.clubelo import ingest as ingest_clubelo
 
-        ingest_clubelo()
+        ingest_clubelo(current_season_only=current_season_only)
     else:
         raise typer.BadParameter(f"unknown source: {source!r}")
 

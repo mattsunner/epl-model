@@ -11,6 +11,7 @@ from plforecast.ingest.footballdata import (
     FootballDataSource,
     _coercion_failures,
     closing_odds_columns,
+    ingest,
     season_code,
     season_label,
 )
@@ -133,3 +134,40 @@ def test_parse_still_lands_a_null_for_a_corrupted_odds_cell_and_does_not_crash()
     assert df.height == 1
     assert df["psch"].to_list() == [None]
     assert df["pscd"].to_list() == [4.0]
+
+
+# ---- ingest(): current_season_only (story: weekly scheduled pipeline) ----
+
+
+def test_ingest_full_backfill_by_default_calls_fetch_with_since_none(monkeypatch, tmp_path):
+    captured = {}
+
+    def fake_fetch(self, *, since=None):
+        captured["since"] = since
+        return _payload(FIXTURE.read_bytes())
+
+    monkeypatch.setattr(FootballDataSource, "fetch", fake_fetch)
+    monkeypatch.setattr(
+        "plforecast.ingest.footballdata.write_snapshot", lambda *a, **k: tmp_path / "snapshot"
+    )
+
+    ingest()
+
+    assert captured["since"] is None
+
+
+def test_ingest_current_season_only_calls_fetch_with_a_since_date(monkeypatch, tmp_path):
+    captured = {}
+
+    def fake_fetch(self, *, since=None):
+        captured["since"] = since
+        return _payload(FIXTURE.read_bytes())
+
+    monkeypatch.setattr(FootballDataSource, "fetch", fake_fetch)
+    monkeypatch.setattr(
+        "plforecast.ingest.footballdata.write_snapshot", lambda *a, **k: tmp_path / "snapshot"
+    )
+
+    ingest(current_season_only=True)
+
+    assert captured["since"] is not None

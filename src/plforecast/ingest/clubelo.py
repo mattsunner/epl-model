@@ -130,12 +130,16 @@ class ClubEloSource:
         return ClubEloRatingSchema.validate(df)
 
 
-def ingest(config: Settings = settings) -> None:
+def ingest(config: Settings = settings, *, current_season_only: bool = False) -> None:
     """Full refresh: every club with a resolvable `clubelo_name` lands as one immutable
     snapshot. A page missing the expected `vegaJson` marker entirely (the site
     restructured again) raises and fails the whole ingest, the same fail-loud
     convention every other adapter follows -- one `RawPart` per club so a re-run after
-    fixing the extraction only needs to re-fetch what changed, not the whole site."""
+    fixing the extraction only needs to re-fetch what changed, not the whole site.
+    `current_season_only` (story: weekly scheduled pipeline) is accepted for interface
+    symmetry with the other adapters but ignored: each club's page always returns its
+    full history in one request regardless, so there is no backfill-vs-current split
+    to exploit here."""
     source = ClubEloSource(config)
     payload = source.fetch()
     df = source.parse(payload)

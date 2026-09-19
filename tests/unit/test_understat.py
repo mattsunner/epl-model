@@ -7,7 +7,7 @@ import polars as pl
 import pytest
 
 from plforecast.ingest.base import RawPart, RawPayload
-from plforecast.ingest.understat import UnderstatSource, season_batches
+from plforecast.ingest.understat import UnderstatSource, ingest, season_batches
 
 
 def _payload(rows: list[dict]) -> RawPayload:
@@ -96,3 +96,40 @@ def test_season_batches_keep_completed_cached_and_current_live():
     assert season_batches([2015, 2016, 2026], 2026) == [([2015, 2016], False), ([2026], True)]
     assert season_batches([2026], 2026) == [([2026], True)]
     assert season_batches([2015], 2026) == [([2015], False)]
+
+
+# ---- ingest(): current_season_only (story: weekly scheduled pipeline) ----
+
+
+def test_ingest_full_backfill_by_default_calls_fetch_with_since_none(monkeypatch, tmp_path):
+    captured = {}
+
+    def fake_fetch(self, *, since=None):
+        captured["since"] = since
+        return _payload([_row()])
+
+    monkeypatch.setattr(UnderstatSource, "fetch", fake_fetch)
+    monkeypatch.setattr(
+        "plforecast.ingest.understat.write_snapshot", lambda *a, **k: tmp_path / "snapshot"
+    )
+
+    ingest()
+
+    assert captured["since"] is None
+
+
+def test_ingest_current_season_only_calls_fetch_with_a_since_date(monkeypatch, tmp_path):
+    captured = {}
+
+    def fake_fetch(self, *, since=None):
+        captured["since"] = since
+        return _payload([_row()])
+
+    monkeypatch.setattr(UnderstatSource, "fetch", fake_fetch)
+    monkeypatch.setattr(
+        "plforecast.ingest.understat.write_snapshot", lambda *a, **k: tmp_path / "snapshot"
+    )
+
+    ingest(current_season_only=True)
+
+    assert captured["since"] is not None

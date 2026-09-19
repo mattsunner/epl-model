@@ -133,10 +133,14 @@ class UnderstatSource:
         return TeamMatchXGSchema.validate(df)
 
 
-def ingest(config: Settings = settings) -> None:
-    """Full backfill: land every configured season as one immutable snapshot."""
+def ingest(config: Settings = settings, *, current_season_only: bool = False) -> None:
+    """Full backfill by default: land every configured season as one immutable
+    snapshot. `current_season_only` (story: weekly scheduled pipeline) narrows the
+    fetch to just the current season via `Source.fetch(since=...)` -- every finished
+    season is immutable, so a scheduled run only needs the one season that can
+    actually have changed since the last run."""
     source = UnderstatSource(config)
-    payload = source.fetch()
+    payload = source.fetch(since=date.today() if current_season_only else None)
     df = source.parse(payload)
     write_snapshot(
         df,

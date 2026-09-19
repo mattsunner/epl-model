@@ -232,8 +232,12 @@ class FPLFixturesSource:
         return FixtureSchema.validate(df)
 
 
-def ingest(config: Settings = settings) -> None:
-    """Land all four FPL-derived raw tables as immutable snapshots."""
+def ingest(config: Settings = settings, *, current_season_only: bool = False) -> None:
+    """Land all four FPL-derived raw tables as immutable snapshots. `current_season_only`
+    (story: weekly scheduled pipeline) is accepted for interface symmetry with the other
+    adapters but ignored: every FPL endpoint here is already current-season-only by
+    nature (a fixture list and a roster, not a multi-season backfill), so there is
+    nothing to narrow."""
     for source in (
         FPLTeamsSource(config),
         FPLPlayersSource(config),

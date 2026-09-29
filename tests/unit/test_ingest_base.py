@@ -6,6 +6,7 @@ import httpx
 import polars as pl
 import pytest
 
+from plforecast.ingest import base
 from plforecast.ingest.base import (
     RawPart,
     cached_get,
@@ -26,6 +27,20 @@ class _StubTransport(httpx.BaseTransport):
     def handle_request(self, request: httpx.Request) -> httpx.Response:
         self.calls += 1
         return httpx.Response(200, content=self.body)
+
+
+class _SequenceTransport(httpx.BaseTransport):
+    """Replays a fixed list of status codes, one per request (the last repeats), so a
+    test can script a source that fails a few times and then recovers."""
+
+    def __init__(self, statuses: list[int]) -> None:
+        self.statuses = statuses
+        self.calls = 0
+
+    def handle_request(self, request: httpx.Request) -> httpx.Response:
+        status = self.statuses[min(self.calls, len(self.statuses) - 1)]
+        self.calls += 1
+        return httpx.Response(status, content=b"ok" if status == 200 else b"")
 
 
 def _client(transport: httpx.BaseTransport) -> httpx.Client:
@@ -291,3 +306,33 @@ def test_prune_snapshots_sources_filter_leaves_other_sources_untouched(tmp_path:
         "20260103T000000Z",
     }
     assert _snapshot_names(tmp_path, "clubelo") == {"20260103T000000Z"}
+
+
+@pytest.fixture
+def no_backoff(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Skip tenacity's real exponential-backoff sleeps so retry tests run instantly."""
+    monkeypatch.setattr(base._get.retry, "sleep", lambda _seconds: None)  # type: ignore[attr-defined]
+
+
+@pytest.mark.parametrize("status", [429, 500, 502, 504])
+def test_get_retries_transient_status_then_succeeds(status: int, no_backoff: None):
+    transport = _SequenceTransport([status, status, 200])
+    response = base._get(_client(transport), "https://example.test/a")
+    assert response.status_code == 200
+    assert transport.calls == 3
+
+
+def test_get_gives_up_after_five_attempts_and_raises_the_status_error(no_backoff: None):
+    transport = _SequenceTransport([504])
+    with pytest.raises(httpx.HTTPStatusError) as exc_info:
+        base._get(_client(transport), "https://example.test/a")
+    assert exc_info.value.response.status_code == 504
+    assert transport.calls == 5
+
+
+@pytest.mark.parametrize("status", [400, 403, 404])
+def test_get_does_not_retry_permanent_client_errors(status: int, no_backoff: None):
+    transport = _SequenceTransport([status])
+    with pytest.raises(httpx.HTTPStatusError):
+        base._get(_client(transport), "https://example.test/a")
+    assert transport.calls == 1

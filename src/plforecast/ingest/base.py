@@ -24,7 +24,7 @@ from typing import Protocol
 import httpx
 import polars as pl
 import structlog
-from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
+from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponential
 
 log = structlog.get_logger()
 
@@ -60,10 +60,22 @@ def _cache_key(url: str) -> str:
     return hashlib.sha256(url.encode()).hexdigest()
 
 
+def _is_transient(exc: BaseException) -> bool:
+    """Network-level failures, plus 429 and 5xx responses (an overloaded or briefly
+    unavailable source, e.g. clubelo.com's 504s). Other 4xx are permanent -- fail fast."""
+    if isinstance(exc, httpx.TransportError):
+        return True
+    if isinstance(exc, httpx.HTTPStatusError):
+        code = exc.response.status_code
+        return code == 429 or code >= 500
+    return False
+
+
 @retry(
-    retry=retry_if_exception_type(httpx.TransportError),
-    stop=stop_after_attempt(3),
-    wait=wait_exponential(multiplier=1, min=1, max=10),
+    retry=retry_if_exception(_is_transient),
+    stop=stop_after_attempt(5),
+    wait=wait_exponential(multiplier=2, min=2, max=30),
+    reraise=True,
 )
 def _get(client: httpx.Client, url: str) -> httpx.Response:
     response = client.get(url)

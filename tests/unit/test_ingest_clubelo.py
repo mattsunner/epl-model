@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import httpx
@@ -7,8 +7,10 @@ import pytest
 from plforecast.ingest.base import RawPart, RawPayload
 from plforecast.ingest.clubelo import (
     ClubEloSource,
+    StaleClubEloError,
     _extract_vega_json,
     ingest,
+    snapshot_age_days,
     use_fallback_snapshot,
 )
 
@@ -221,3 +223,71 @@ def test_fallback_annotates_the_run_when_in_github_actions(
     ingest(config, allow_stale=True)
 
     assert "::warning title=ClubElo::" in capsys.readouterr().out
+
+
+# --- staleness guard ---------------------------------------------------------------------
+
+
+def _name_aged(days: float) -> str:
+    return (datetime.now(UTC) - timedelta(days=days)).strftime("%Y%m%dT%H%M%SZ")
+
+
+def test_snapshot_age_is_read_from_the_directory_name(tmp_path: Path):
+    snapshot = _landed_snapshot(tmp_path, "20260901T120000Z")
+    now = datetime(2026, 9, 11, 12, 0, tzinfo=UTC)
+    assert snapshot_age_days(snapshot, now=now) == pytest.approx(10.0)
+
+
+def test_fresh_fallback_snapshot_warns_once_without_the_refresh_nudge(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+):
+    config = _settings(tmp_path)
+    _landed_snapshot(config.clubelo_seed_dir, _name_aged(5))
+    _failing_fetch(monkeypatch, _gateway_timeout())
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+
+    ingest(config, allow_stale=True)
+
+    out = capsys.readouterr().out
+    assert "live_fetch_failed_using_stale_snapshot" in out
+    assert "refresh_the_seed" not in out
+
+
+def test_snapshot_past_the_warn_threshold_adds_the_refresh_nudge(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+):
+    config = _settings(tmp_path)
+    _landed_snapshot(config.clubelo_seed_dir, _name_aged(45))  # warn 30, fail 90
+    _failing_fetch(monkeypatch, _gateway_timeout())
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+
+    ingest(config, allow_stale=True)  # still succeeds
+
+    out = capsys.readouterr().out
+    assert "live_fetch_failed_using_stale_snapshot" in out
+    assert "snapshot_getting_old_refresh_the_seed" in out
+    assert "just refresh-clubelo-seed" in out
+
+
+def test_snapshot_past_the_fail_threshold_raises(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    config = _settings(tmp_path)
+    _landed_snapshot(config.clubelo_seed_dir, _name_aged(120))
+    _failing_fetch(monkeypatch, _gateway_timeout())
+
+    with pytest.raises(StaleClubEloError, match="refresh-clubelo-seed"):
+        ingest(config, allow_stale=True)
+
+
+def test_thresholds_come_from_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    from plforecast.config import Settings
+
+    config = Settings(
+        data_dir=tmp_path / "data",
+        clubelo_seed_dir=tmp_path / "seed",
+        clubelo_stale_fail_days=10,
+    )
+    _landed_snapshot(config.clubelo_seed_dir, _name_aged(20))
+    _failing_fetch(monkeypatch, _gateway_timeout())
+
+    with pytest.raises(StaleClubEloError):
+        ingest(config, allow_stale=True)

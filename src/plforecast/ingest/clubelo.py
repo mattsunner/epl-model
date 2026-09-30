@@ -169,6 +169,17 @@ def use_fallback_snapshot(config: Settings = settings) -> Path:
     return newest_raw
 
 
+class StaleClubEloError(RuntimeError):
+    """The only snapshot available is older than `config.clubelo_stale_fail_days`."""
+
+
+def snapshot_age_days(snapshot: Path, *, now: datetime | None = None) -> float:
+    """Age of a snapshot directory, read from its UTC-timestamp name (the same name
+    `write_snapshot` gives it, and the one that survives being copied around)."""
+    landed = datetime.strptime(snapshot.name, "%Y%m%dT%H%M%SZ").replace(tzinfo=UTC)
+    return ((now or datetime.now(UTC)) - landed).total_seconds() / 86400
+
+
 def _warn(message: str, **fields: object) -> None:
     """Log a warning, and in GitHub Actions also raise a workflow annotation so it shows
     on the run's summary page rather than only buried in the step's log."""
@@ -198,7 +209,11 @@ def ingest(
     (`httpx.HTTPError` -- clubelo.com 504s GitHub Actions runners), fall back to the
     newest snapshot instead of failing the run, and say so loudly. Only fetch failures
     fall back; a parse failure (the site changed shape) still raises, since a stale
-    snapshot would hide it. Without the flag a failed fetch raises, as before."""
+    snapshot would hide it. Without the flag a failed fetch raises, as before.
+
+    The fallback is bounded so it cannot rot unnoticed: past `clubelo_stale_warn_days`
+    it adds a second warning saying to refresh the seed, and past
+    `clubelo_stale_fail_days` it raises StaleClubEloError."""
     source = ClubEloSource(config)
     try:
         payload = source.fetch()
@@ -206,11 +221,26 @@ def ingest(
         if not allow_stale:
             raise
         snapshot = use_fallback_snapshot(config)
+        age_days = snapshot_age_days(snapshot)
+        if age_days > config.clubelo_stale_fail_days:
+            raise StaleClubEloError(
+                f"newest ClubElo snapshot {snapshot.name} is {age_days:.0f} days old (limit "
+                f"{config.clubelo_stale_fail_days}) and the live fetch failed "
+                f"({type(exc).__name__}); refresh the seed with `just refresh-clubelo-seed`"
+            ) from exc
         _warn(
             "clubelo.live_fetch_failed_using_stale_snapshot",
             snapshot=snapshot.name,
+            age_days=round(age_days, 1),
             error=type(exc).__name__,
         )
+        if age_days > config.clubelo_stale_warn_days:
+            _warn(
+                "clubelo.snapshot_getting_old_refresh_the_seed",
+                age_days=round(age_days, 1),
+                warn_after_days=config.clubelo_stale_warn_days,
+                fix="just refresh-clubelo-seed, then commit seeds/clubelo",
+            )
         return
     df = source.parse(payload)
     write_snapshot(

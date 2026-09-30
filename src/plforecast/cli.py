@@ -62,6 +62,18 @@ def ingest(
 
 
 @app.command()
+def refresh_clubelo_seed() -> None:
+    """Fetch ClubElo live and replace the committed fallback seed (seeds/clubelo/).
+
+    Run from a machine clubelo.com will talk to (GitHub Actions runners get 504s), then
+    commit the result. A failed fetch leaves the existing seed untouched."""
+    from plforecast.ingest.clubelo import refresh_seed
+
+    seeded = refresh_seed()
+    typer.echo(f"seed refreshed: {seeded}\ncommit it: git add seeds/clubelo && git commit")
+
+
+@app.command()
 def db_migrate() -> None:
     """Apply any pending DuckDB migrations."""
     conn = connect()

@@ -10,6 +10,7 @@ from plforecast.ingest.clubelo import (
     StaleClubEloError,
     _extract_vega_json,
     ingest,
+    refresh_seed,
     snapshot_age_days,
     use_fallback_snapshot,
 )
@@ -291,3 +292,60 @@ def test_thresholds_come_from_config(tmp_path: Path, monkeypatch: pytest.MonkeyP
 
     with pytest.raises(StaleClubEloError):
         ingest(config, allow_stale=True)
+
+
+# --- seed refresh ------------------------------------------------------------------------
+
+
+def _live_fetch_returns_the_fixture(monkeypatch: pytest.MonkeyPatch) -> None:
+    payload = RawPayload(
+        source="clubelo",
+        fetched_at=datetime.now(UTC),
+        parts=[
+            RawPart(
+                url="https://clubelo.com/Arsenal",
+                status_code=200,
+                content=FIXTURE.read_bytes(),
+                fetched_at=datetime.now(UTC),
+                label="arsenal",
+            )
+        ],
+    )
+    monkeypatch.setattr(ClubEloSource, "fetch", lambda self, *, since=None: payload)
+
+
+def test_refresh_seed_replaces_the_old_seed_with_a_fresh_snapshot(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    config = _settings(tmp_path)
+    old = _landed_snapshot(config.clubelo_seed_dir, "20260101T000000Z")
+    _live_fetch_returns_the_fixture(monkeypatch)
+
+    seeded = refresh_seed(config)
+
+    assert not old.exists()
+    assert [p.name for p in config.clubelo_seed_dir.iterdir()] == [seeded.name]
+    assert (seeded / "data.parquet").exists()
+    assert (seeded / "_meta.json").exists()
+
+
+def test_refresh_seed_creates_the_seed_dir_when_absent(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    config = _settings(tmp_path)
+    _live_fetch_returns_the_fixture(monkeypatch)
+
+    assert (refresh_seed(config) / "data.parquet").exists()
+
+
+def test_a_failed_refresh_leaves_the_existing_seed_untouched(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    config = _settings(tmp_path)
+    old = _landed_snapshot(config.clubelo_seed_dir, "20260101T000000Z")
+    _failing_fetch(monkeypatch, _gateway_timeout())
+
+    with pytest.raises(httpx.HTTPStatusError):  # no fallback: refreshing must not go stale
+        refresh_seed(config)
+
+    assert old.exists()

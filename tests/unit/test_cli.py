@@ -42,3 +42,16 @@ def test_ingest_accepts_allow_stale_for_clubelo(monkeypatch):
 
     assert result.exit_code == 0
     assert seen["allow_stale"] is True
+
+
+def test_refresh_clubelo_seed_reports_the_new_snapshot_and_how_to_commit_it(monkeypatch):
+    monkeypatch.setattr(
+        "plforecast.ingest.clubelo.refresh_seed",
+        lambda: Path("seeds/clubelo/20260930T000000Z"),
+    )
+
+    result = runner.invoke(app, ["refresh-clubelo-seed"])
+
+    assert result.exit_code == 0
+    assert "20260930T000000Z" in result.output
+    assert "git add seeds/clubelo" in result.output

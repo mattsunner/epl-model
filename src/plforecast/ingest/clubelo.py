@@ -250,3 +250,21 @@ def ingest(
         raw_dir=config.raw_dir,
         parts=payload.parts,
     )
+
+
+def refresh_seed(config: Settings = settings) -> Path:
+    """Replace the committed seed with a fresh live snapshot (`just refresh-clubelo-seed`).
+    Run from a machine clubelo.com will talk to, then commit `seeds/clubelo/`. The live
+    ingest runs first *without* `allow_stale`, so a failed fetch raises and leaves the
+    existing seed untouched -- refreshing must never replace a good seed with an old one.
+    Exactly one snapshot is kept in the seed (git history has the rest)."""
+    ingest(config)
+    newest = _snapshot_dirs(config.raw_dir / ClubEloSource.name)[-1]
+
+    for old in _snapshot_dirs(config.clubelo_seed_dir):
+        shutil.rmtree(old)
+    config.clubelo_seed_dir.mkdir(parents=True, exist_ok=True)
+    seeded = config.clubelo_seed_dir / newest.name
+    shutil.copytree(newest, seeded)
+    log.info("clubelo.seed_refreshed", snapshot=newest.name)
+    return seeded

@@ -1,0 +1,232 @@
+{
+  "source": "clubelo",
+  "fetched_at": "2026-09-29T20:28:27.123773+00:00",
+  "row_count": 6212,
+  "content_hash": "0dafec57cae470eef52ae28d90878708e9d93f1c1a8c681fc2f16c57df60e6fe",
+  "parts": [
+    {
+      "url": "https://clubelo.com/Arsenal",
+      "status_code": 200,
+      "label": "arsenal",
+      "from_cache": false,
+      "fetched_at": "2026-09-29T20:27:19.968549+00:00"
+    },
+    {
+      "url": "https://clubelo.com/AstonVilla",
+      "status_code": 200,
+      "label": "aston-villa",
+      "from_cache": false,
+      "fetched_at": "2026-09-29T20:27:36.109965+00:00"
+    },
+    {
+      "url": "https://clubelo.com/Bournemouth",
+      "status_code": 200,
+      "label": "bournemouth",
+      "from_cache": false,
+      "fetched_at": "2026-09-29T20:27:38.037591+00:00"
+    },
+    {
+      "url": "https://clubelo.com/Brentford",
+      "status_code": 200,
+      "label": "brentford",
+      "from_cache": false,
+      "fetched_at": "2026-09-29T20:27:41.281865+00:00"
+    },
+    {
+      "url": "https://clubelo.com/Brighton",
+      "status_code": 200,
+      "label": "brighton",
+      "from_cache": false,
+      "fetched_at": "2026-09-29T20:27:42.418840+00:00"
+    },
+    {
+      "url": "https://clubelo.com/Burnley",
+      "status_code": 200,
+      "label": "burnley",
+      "from_cache": false,
+      "fetched_at": "2026-09-29T20:27:44.053531+00:00"
+    },
+    {
+      "url": "https://clubelo.com/Cardiff",
+      "status_code": 200,
+      "label": "cardiff",
+      "from_cache": false,
+      "fetched_at": "2026-09-29T20:27:45.569424+00:00"
+    },
+    {
+      "url": "https://clubelo.com/Chelsea",
+      "status_code": 200,
+      "label": "chelsea",
+      "from_cache": false,
+      "fetched_at": "2026-09-29T20:27:47.032685+00:00"
+    },
+    {
+      "url": "https://clubelo.com/Coventry",
+      "status_code": 200,
+      "label": "coventry",
+      "from_cache": false,
+      "fetched_at": "2026-09-29T20:27:48.484089+00:00"
+    },
+    {
+      "url": "https://clubelo.com/CrystalPalace",
+      "status_code": 200,
+      "label": "crystal-palace",
+      "from_cache": false,
+      "fetched_at": "2026-09-29T20:27:49.887694+00:00"
+    },
+    {
+      "url": "https://clubelo.com/Everton",
+      "status_code": 200,
+      "label": "everton",
+      "from_cache": false,
+      "fetched_at": "2026-09-29T20:27:51.407021+00:00"
+    },
+    {
+      "url": "https://clubelo.com/Fulham",
+      "status_code": 200,
+      "label": "fulham",
+      "from_cache": false,
+      "fetched_at": "2026-09-29T20:27:53.069803+00:00"
+    },
+    {
+      "url": "https://clubelo.com/Hull",
+      "status_code": 200,
+      "label": "hull",
+      "from_cache": false,
+      "fetched_at": "2026-09-29T20:27:54.621726+00:00"
+    },
+    {
+      "url": "https://clubelo.com/Ipswich",
+      "status_code": 200,
+      "label": "ipswich",
+      "from_cache": false,
+      "fetched_at": "2026-09-29T20:27:56.168621+00:00"
+    },
+    {
+      "url": "https://clubelo.com/Leeds",
+      "status_code": 200,
+      "label": "leeds",
+      "from_cache": false,
+      "fetched_at": "2026-09-29T20:27:58.105079+00:00"
+    },
+    {
+      "url": "https://clubelo.com/Leicester",
+      "status_code": 200,
+      "label": "leicester",
+      "from_cache": false,
+      "fetched_at": "2026-09-29T20:27:59.736842+00:00"
+    },
+    {
+      "url": "https://clubelo.com/Liverpool",
+      "status_code": 200,
+      "label": "liverpool",
+      "from_cache": false,
+      "fetched_at": "2026-09-29T20:28:01.462854+00:00"
+    },
+    {
+      "url": "https://clubelo.com/Luton",
+      "status_code": 200,
+      "label": "luton",
+      "from_cache": false,
+      "fetched_at": "2026-09-29T20:28:02.714301+00:00"
+    },
+    {
+      "url": "https://clubelo.com/ManCity",
+      "status_code": 200,
+      "label": "man-city",
+      "from_cache": false,
+      "fetched_at": "2026-09-29T20:28:05.276849+00:00"
+    },
+    {
+      "url": "https://clubelo.com/ManUnited",
+      "status_code": 200,
+      "label": "man-united",
+      "from_cache": false,
+      "fetched_at": "2026-09-29T20:28:06.825408+00:00"
+    },
+    {
+      "url": "https://clubelo.com/Middlesbrough",
+      "status_code": 200,
+      "label": "middlesbrough",
+      "from_cache": false,
+      "fetched_at": "2026-09-29T20:28:09.136216+00:00"
+    },
+    {
+      "url": "https://clubelo.com/Newcastle",
+      "status_code": 200,
+      "label": "newcastle",
+      "from_cache": false,
+      "fetched_at": "2026-09-29T20:28:10.697013+00:00"
+    },
+    {
+      "url": "https://clubelo.com/Norwich",
+      "status_code": 200,
+      "label": "norwich",
+      "from_cache": false,
+      "fetched_at": "2026-09-29T20:28:12.171306+00:00"
+    },
+    {
+      "url": "https://clubelo.com/Forest",
+      "status_code": 200,
+      "label": "nottm-forest",
+      "from_cache": false,
+      "fetched_at": "2026-09-29T20:28:13.814133+00:00"
+    },
+    {
+      "url": "https://clubelo.com/SheffieldUnited",
+      "status_code": 200,
+      "label": "sheffield-united",
+      "from_cache": false,
+      "fetched_at": "2026-09-29T20:28:15.283618+00:00"
+    },
+    {
+      "url": "https://clubelo.com/Southampton",
+      "status_code": 200,
+      "label": "southampton",
+      "from_cache": false,
+      "fetched_at": "2026-09-29T20:28:16.784373+00:00"
+    },
+    {
+      "url": "https://clubelo.com/Sunderland",
+      "status_code": 200,
+      "label": "sunderland",
+      "from_cache": false,
+      "fetched_at": "2026-09-29T20:28:18.304962+00:00"
+    },
+    {
+      "url": "https://clubelo.com/Swansea",
+      "status_code": 200,
+      "label": "swansea",
+      "from_cache": false,
+      "fetched_at": "2026-09-29T20:28:19.689883+00:00"
+    },
+    {
+      "url": "https://clubelo.com/Tottenham",
+      "status_code": 200,
+      "label": "tottenham",
+      "from_cache": false,
+      "fetched_at": "2026-09-29T20:28:21.275160+00:00"
+    },
+    {
+      "url": "https://clubelo.com/WestBrom",
+      "status_code": 200,
+      "label": "west-brom",
+      "from_cache": false,
+      "fetched_at": "2026-09-29T20:28:22.929018+00:00"
+    },
+    {
+      "url": "https://clubelo.com/WestHam",
+      "status_code": 200,
+      "label": "west-ham",
+      "from_cache": false,
+      "fetched_at": "2026-09-29T20:28:24.513487+00:00"
+    },
+    {
+      "url": "https://clubelo.com/Wolves",
+      "status_code": 200,
+      "label": "wolves",
+      "from_cache": false,
+      "fetched_at": "2026-09-29T20:28:27.123548+00:00"
+    }
+  ]
+}

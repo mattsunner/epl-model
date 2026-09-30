@@ -71,3 +71,21 @@ def test_parse_concatenates_every_club_part():
 def test_parse_raises_on_a_page_missing_the_vega_marker():
     with pytest.raises(ValueError):
         ClubEloSource().parse(_payload("<html><body>restructured page</body></html>"))
+
+
+def test_committed_seed_snapshot_is_a_valid_clubelo_snapshot():
+    """The seed is what the weekly pipeline falls back to when clubelo.com is
+    unreachable from CI, so a deleted or corrupted one must fail a test, not a Tuesday."""
+    import polars as pl
+
+    from plforecast.config import Settings
+    from plforecast.ingest.clubelo import ClubEloRatingSchema
+
+    seed_dir = Settings().clubelo_seed_dir
+    snapshots = sorted(p for p in seed_dir.iterdir() if p.is_dir())
+    assert snapshots, f"no seed snapshot committed under {seed_dir}"
+
+    df = pl.read_parquet(snapshots[-1] / "data.parquet")
+    ClubEloRatingSchema.validate(df)
+    assert df["club_id"].n_unique() >= 30  # 32 of the 35 aliased clubs have a ClubElo page
+    assert (snapshots[-1] / "_meta.json").exists()

@@ -67,6 +67,16 @@ class Settings(BaseSettings):
     # value. Revisit toward 0 if a wider evaluation contradicts the live shift.
     clubelo_prior_weight: float = 0.5
 
+    # ClubElo's live fetch fails from GitHub Actions runners (clubelo.com returns 504s to
+    # them, though it is fine from a home connection), so the weekly pipeline falls back
+    # to the newest committed snapshot in `clubelo_seed_dir` (ingest/clubelo.py). Elo
+    # moves slowly and only shapes the promoted-club priors, so a stale snapshot is a
+    # small error -- but it must not rot unnoticed: past `warn_days` the fallback says
+    # to refresh the seed (`just refresh-clubelo-seed`), past `fail_days` it refuses.
+    clubelo_seed_dir: Path = Path("seeds/clubelo")
+    clubelo_stale_warn_days: int = 30
+    clubelo_stale_fail_days: int = 90
+
     @property
     def raw_dir(self) -> Path:
         return self.data_dir / "raw"

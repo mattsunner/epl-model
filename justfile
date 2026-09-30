@@ -30,6 +30,12 @@ ingest-understat:
 ingest-clubelo:
     uv run plforecast ingest clubelo
 
+# ClubElo 504s GitHub Actions runners, so the weekly pipeline falls back to the snapshot
+# committed in seeds/clubelo/. Run this from home every few weeks (it warns at 30 days,
+# fails at 90), then commit seeds/clubelo.
+refresh-clubelo-seed:
+    uv run plforecast refresh-clubelo-seed
+
 migrate:
     uv run plforecast db-migrate
 

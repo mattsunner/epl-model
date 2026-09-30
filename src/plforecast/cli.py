@@ -31,6 +31,14 @@ def ingest(
             "fpl and clubelo ignore this, they have no backfill-vs-current split."
         ),
     ] = False,
+    allow_stale: Annotated[
+        bool,
+        typer.Option(
+            help="If the live fetch fails, fall back to the newest ClubElo snapshot "
+            "(cache or committed seed) with a warning instead of failing. clubelo "
+            "only; the scheduled pipeline sets it, a local run should not."
+        ),
+    ] = False,
 ) -> None:
     """Fetch and land a raw snapshot from one source."""
     if source == "football-data":
@@ -48,9 +56,21 @@ def ingest(
     elif source == "clubelo":
         from plforecast.ingest.clubelo import ingest as ingest_clubelo
 
-        ingest_clubelo(current_season_only=current_season_only)
+        ingest_clubelo(current_season_only=current_season_only, allow_stale=allow_stale)
     else:
         raise typer.BadParameter(f"unknown source: {source!r}")
+
+
+@app.command()
+def refresh_clubelo_seed() -> None:
+    """Fetch ClubElo live and replace the committed fallback seed (seeds/clubelo/).
+
+    Run from a machine clubelo.com will talk to (GitHub Actions runners get 504s), then
+    commit the result. A failed fetch leaves the existing seed untouched."""
+    from plforecast.ingest.clubelo import refresh_seed
+
+    seeded = refresh_seed()
+    typer.echo(f"seed refreshed: {seeded}\ncommit it: git add seeds/clubelo && git commit")
 
 
 @app.command()

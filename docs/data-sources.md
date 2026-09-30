@@ -161,6 +161,23 @@ ingestion contract every adapter implements.
   gap costs nothing real.
 - **Access**: no auth, no published rate limit; the adapter applies the same politeness
   delay and TTL cache as football-data and FPL.
+- **GitHub Actions runners get 504s (found 30 September 2026).** The same
+  `clubelo.com/Arsenal` URL returns 200 in about 0.2s from a home connection and 504s on
+  every attempt from a runner (a `ReadTimeout` on another run), even with the retry
+  fix for 5xx/429 in `ingest/base.py`. Cause not confirmed from the runner; it looks
+  like the site or its front end refusing datacenter IPs. So the weekly pipeline calls
+  `ingest clubelo --allow-stale`: on a failed *fetch* it falls back to the newest of the
+  restored cache's snapshot and the seed committed in `seeds/clubelo/` (the newer wins),
+  and warns, with a GitHub Actions annotation. A *parse* failure (the site changed
+  shape) still raises, and so does having no snapshot at all.
+- **The seed must be refreshed by hand.** Run `just refresh-clubelo-seed` from a machine
+  clubelo.com will talk to and commit `seeds/clubelo/`. It keeps exactly one snapshot,
+  and a failed fetch leaves the old seed untouched. Ratings move slowly and only shape
+  the promoted-club priors, so every few weeks is enough: the fallback adds a "refresh
+  the seed" warning past 30 days (`config.clubelo_stale_warn_days`) and fails the run
+  past 90 (`clubelo_stale_fail_days`), so a forgotten seed cannot feed old ratings
+  forever. Not recorded in the forecast artifacts (the schema is locked); the snapshot
+  actually used is in `data/curate-manifest.json`'s lineage.
 - **Active since 19 September 2026**: `config.clubelo_prior_weight` defaults to `0.5`.
   The one evaluation run behind it (`notebooks/03-prototypes/03-04-clubelo-prior-
   workbench.ipynb`) was inconclusive on RPS across an 18-match historical sample --

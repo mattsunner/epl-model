@@ -73,8 +73,13 @@ jobs:
       - name: Ingest fpl
         run: uv run plforecast ingest fpl
 
-      - name: Ingest clubelo
-        run: uv run plforecast ingest clubelo
+      # clubelo.com 504s GitHub Actions runners (it is fine from a home connection), so a
+      # failed live fetch falls back to the newest snapshot -- the restored cache's, or
+      # the seed committed in seeds/clubelo/, whichever is newer -- and warns. The
+      # fallback fails the run once that snapshot is over 90 days old; refresh the seed
+      # with `just refresh-clubelo-seed` from a machine clubelo.com will talk to.
+      - name: Ingest clubelo (falls back to the committed seed)
+        run: uv run plforecast ingest clubelo --allow-stale
 
       - name: Curate
         run: uv run plforecast curate

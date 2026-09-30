@@ -31,6 +31,14 @@ def ingest(
             "fpl and clubelo ignore this, they have no backfill-vs-current split."
         ),
     ] = False,
+    allow_stale: Annotated[
+        bool,
+        typer.Option(
+            help="If the live fetch fails, fall back to the newest ClubElo snapshot "
+            "(cache or committed seed) with a warning instead of failing. clubelo "
+            "only; the scheduled pipeline sets it, a local run should not."
+        ),
+    ] = False,
 ) -> None:
     """Fetch and land a raw snapshot from one source."""
     if source == "football-data":
@@ -48,7 +56,7 @@ def ingest(
     elif source == "clubelo":
         from plforecast.ingest.clubelo import ingest as ingest_clubelo
 
-        ingest_clubelo(current_season_only=current_season_only)
+        ingest_clubelo(current_season_only=current_season_only, allow_stale=allow_stale)
     else:
         raise typer.BadParameter(f"unknown source: {source!r}")
 

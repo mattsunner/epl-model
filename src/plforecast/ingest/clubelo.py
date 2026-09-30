@@ -26,7 +26,10 @@ symmetry with every other `Source` but does not change what is fetched.
 from __future__ import annotations
 
 import json
+import os
+import shutil
 from datetime import UTC, date, datetime
+from pathlib import Path
 
 import httpx
 import pandera.polars as pa
@@ -130,7 +133,57 @@ class ClubEloSource:
         return ClubEloRatingSchema.validate(df)
 
 
-def ingest(config: Settings = settings, *, current_season_only: bool = False) -> None:
+def _snapshot_dirs(root: Path) -> list[Path]:
+    """Landed snapshot directories under `root`, oldest first (names are UTC timestamps,
+    so a plain sort is chronological). Empty for a directory that does not exist."""
+    if not root.exists():
+        return []
+    return sorted(p for p in root.iterdir() if p.is_dir() and (p / "data.parquet").exists())
+
+
+def use_fallback_snapshot(config: Settings = settings) -> Path:
+    """The newest snapshot available without a live fetch, landed in `raw_dir` so curate
+    reads it like any other. Candidates are whatever `raw_dir/clubelo` already holds (a
+    restored Actions cache, a local run) and the committed seed in
+    `config.clubelo_seed_dir`; the newer wins, and a seed that wins is copied into
+    `raw_dir` (never the other way -- the seed only changes via `refresh_seed`).
+    Raises FileNotFoundError when there is neither: no data at all is a real failure,
+    not something to paper over."""
+    raw_root = config.raw_dir / ClubEloSource.name
+    raw = _snapshot_dirs(raw_root)
+    seed = _snapshot_dirs(config.clubelo_seed_dir)
+    if not raw and not seed:
+        raise FileNotFoundError(
+            f"no ClubElo snapshot to fall back to: {raw_root} and {config.clubelo_seed_dir} "
+            "are both empty"
+        )
+
+    newest_raw = raw[-1] if raw else None
+    newest_seed = seed[-1] if seed else None
+    if newest_seed is not None and (newest_raw is None or newest_seed.name > newest_raw.name):
+        destination = raw_root / newest_seed.name
+        shutil.copytree(newest_seed, destination)
+        log.info("clubelo.seed_restored", snapshot=newest_seed.name)
+        return destination
+    assert newest_raw is not None
+    return newest_raw
+
+
+def _warn(message: str, **fields: object) -> None:
+    """Log a warning, and in GitHub Actions also raise a workflow annotation so it shows
+    on the run's summary page rather than only buried in the step's log."""
+    log.warning(message, **fields)
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        detail = " ".join(f"{k}={v}" for k, v in fields.items())
+        print(f"::warning title=ClubElo::{message} {detail}")
+
+
+def ingest(
+    config: Settings = settings,
+    *,
+    current_season_only: bool = False,
+    allow_stale: bool = False,
+) -> None:
     """Full refresh: every club with a resolvable `clubelo_name` lands as one immutable
     snapshot. A page missing the expected `vegaJson` marker entirely (the site
     restructured again) raises and fails the whole ingest, the same fail-loud
@@ -139,9 +192,26 @@ def ingest(config: Settings = settings, *, current_season_only: bool = False) ->
     `current_season_only` (story: weekly scheduled pipeline) is accepted for interface
     symmetry with the other adapters but ignored: each club's page always returns its
     full history in one request regardless, so there is no backfill-vs-current split
-    to exploit here."""
+    to exploit here.
+
+    `allow_stale` (the scheduled pipeline sets it): when the live *fetch* fails
+    (`httpx.HTTPError` -- clubelo.com 504s GitHub Actions runners), fall back to the
+    newest snapshot instead of failing the run, and say so loudly. Only fetch failures
+    fall back; a parse failure (the site changed shape) still raises, since a stale
+    snapshot would hide it. Without the flag a failed fetch raises, as before."""
     source = ClubEloSource(config)
-    payload = source.fetch()
+    try:
+        payload = source.fetch()
+    except httpx.HTTPError as exc:
+        if not allow_stale:
+            raise
+        snapshot = use_fallback_snapshot(config)
+        _warn(
+            "clubelo.live_fetch_failed_using_stale_snapshot",
+            snapshot=snapshot.name,
+            error=type(exc).__name__,
+        )
+        return
     df = source.parse(payload)
     write_snapshot(
         df,

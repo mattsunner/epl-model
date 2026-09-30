@@ -969,6 +969,19 @@ season. Both fixed (`storage/curate.py` now merges across every landed snapshot;
 `prune_snapshots`/`cli.py prune-raw` gained a `sources` filter so the scheduled
 workflow only prunes full-refetch sources, never football-data/understat).
 
+**Follow-ups, 30 Sep 2026.** The first scheduled runs failed three separate ways, each
+fixed: (1) `ingest/base.py` `_get` retried only transport errors, so a clubelo.com 504
+killed the run on attempt one -- it now retries 429/5xx (5 attempts, 2-30s backoff);
+(2) a cache miss ran `--current-season-only` with no history behind it, so `forecast`
+died building the promoted-club prior's survival-zone reference from zero completed
+seasons (`actions/cache` only saves on success, so failed runs never seeded it) -- a
+cache miss now does the full backfill; (3) clubelo.com 504s Actions runners
+outright (fine from a home connection), which no retry fixes -- `ingest clubelo
+--allow-stale` falls back to the newest snapshot (restored cache or the committed
+`seeds/clubelo/`), warning at 30 days old and failing at 90. The seed is refreshed by
+hand every few weeks with `just refresh-clubelo-seed`; that is the one manual step left
+in the pipeline. See `docs/data-sources.md`.
+
 Evidence: the site's own publishing design (ADR 0005) already anticipated this --
 "revisit only if the pipeline moves to scheduled execution" -- and was the stated
 prerequisite for showing weekly forecast history or fixture-level predictions on

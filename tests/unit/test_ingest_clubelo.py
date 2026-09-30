@@ -349,3 +349,33 @@ def test_a_failed_refresh_leaves_the_existing_seed_untouched(
         refresh_seed(config)
 
     assert old.exists()
+
+
+# --- end to end: the committed seed -> a failed live fetch -> curate ----------------------
+
+
+def test_the_real_seed_flows_through_a_failed_fetch_into_stg_clubelo(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """What the scheduled run actually does on a cold runner: no cache, clubelo.com
+    504ing. The committed seed must land in raw/, become the raw_clubelo_ratings view,
+    and curate into a non-empty stg_clubelo the forecast's ClubElo prior can read."""
+    from plforecast.config import Settings
+    from plforecast.storage.curate import curate_clubelo
+    from plforecast.storage.db import connect
+
+    # Real clubelo_seed_dir; the age limit is lifted so this test does not start failing
+    # the day the committed seed is 90 days old (that behaviour has its own tests above).
+    config = Settings(data_dir=tmp_path / "data", clubelo_stale_fail_days=10_000)
+    _failing_fetch(monkeypatch, _gateway_timeout())
+
+    ingest(config, allow_stale=True)
+    conn = connect(config)
+    curate_clubelo(conn)
+
+    rows, clubs = conn.execute(
+        "SELECT count(*), count(DISTINCT club_id) FROM stg_clubelo"
+    ).fetchone()
+    assert rows > 1000
+    assert clubs >= 30
+    conn.close()

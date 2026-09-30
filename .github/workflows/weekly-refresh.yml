@@ -35,10 +35,12 @@ jobs:
 
       # Ever-growing cache keyed by run: every run saves a new entry (key is always
       # unique), restore-keys always falls back to the most recent one. Self-healing --
-      # a cache miss (first run ever, or after GitHub evicts an old entry) just means
-      # one slower run that does a full backfill and re-seeds the cache for every run
-      # after it, rather than a hard failure.
+      # a cache miss (first run ever, after GitHub evicts an old entry, or because every
+      # earlier run failed -- actions/cache only saves on a successful job) means one
+      # slower run that does a full backfill (the "Choose ingest scope" step below) and
+      # re-seeds the cache for every run after it, rather than a hard failure.
       - name: Restore data cache
+        id: cache
         uses: actions/cache@v4
         with:
           path: data
@@ -49,11 +51,24 @@ jobs:
       - name: Sync (frozen lock file)
         run: uv sync --frozen
 
-      - name: Ingest football-data (current season only)
-        run: uv run plforecast ingest football-data --current-season-only
+      # --current-season-only assumes finished seasons are already in the restored
+      # cache. Without a cache there is no history at all, and the forecast fails (the
+      # promoted-club prior has no completed seasons to build its reference from), so a
+      # cache miss must do the full backfill instead.
+      - name: Choose ingest scope
+        run: |
+          if [ -n "${{ steps.cache.outputs.cache-matched-key }}" ]; then
+            echo "SEASON_FLAG=--current-season-only" >> "$GITHUB_ENV"
+          else
+            echo "cache miss: full backfill"
+            echo "SEASON_FLAG=" >> "$GITHUB_ENV"
+          fi
 
-      - name: Ingest understat (current season only)
-        run: uv run plforecast ingest understat --current-season-only
+      - name: Ingest football-data
+        run: uv run plforecast ingest football-data $SEASON_FLAG
+
+      - name: Ingest understat
+        run: uv run plforecast ingest understat $SEASON_FLAG
 
       - name: Ingest fpl
         run: uv run plforecast ingest fpl
